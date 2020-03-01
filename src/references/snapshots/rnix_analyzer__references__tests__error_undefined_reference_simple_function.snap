@@ -1,0 +1,12 @@
+---
+source: src/references/mod.rs
+expression: references.1
+---
+[
+    NotFoundInScope(
+        Identifier {
+            name: "b",
+            text_range: [3; 4),
+        },
+    ),
+]

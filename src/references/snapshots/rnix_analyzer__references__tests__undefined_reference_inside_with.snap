@@ -1,0 +1,50 @@
+---
+source: src/references/mod.rs
+expression: references.0
+---
+References {
+    identifiers: [
+        Identifier {
+            name: "a",
+            text_range: [0; 1),
+        },
+        Identifier {
+            name: "a",
+            text_range: [8; 9),
+        },
+        Identifier {
+            name: "b",
+            text_range: [11; 12),
+        },
+    ],
+    references: {
+        Identifier {
+            name: "a",
+            text_range: [0; 1),
+        }: Reference {
+            from: Identifier {
+                name: "a",
+                text_range: [0; 1),
+            },
+            to: Definition {
+                id: 0,
+                name: "a",
+                text_range: [0; 1),
+            },
+        },
+        Identifier {
+            name: "a",
+            text_range: [8; 9),
+        }: Reference {
+            from: Identifier {
+                name: "a",
+                text_range: [8; 9),
+            },
+            to: Definition {
+                id: 0,
+                name: "a",
+                text_range: [0; 1),
+            },
+        },
+    },
+}

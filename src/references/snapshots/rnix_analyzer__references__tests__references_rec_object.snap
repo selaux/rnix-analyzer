@@ -1,0 +1,100 @@
+---
+source: src/references/mod.rs
+expression: references.0
+---
+References {
+    identifiers: [
+        Identifier {
+            name: "b",
+            text_range: [0; 1),
+        },
+        Identifier {
+            name: "a",
+            text_range: [21; 22),
+        },
+        Identifier {
+            name: "b",
+            text_range: [43; 44),
+        },
+        Identifier {
+            name: "c",
+            text_range: [64; 65),
+        },
+        Identifier {
+            name: "a",
+            text_range: [70; 71),
+        },
+    ],
+    references: {
+        Identifier {
+            name: "b",
+            text_range: [0; 1),
+        }: Reference {
+            from: Identifier {
+                name: "b",
+                text_range: [0; 1),
+            },
+            to: Definition {
+                id: 0,
+                name: "b",
+                text_range: [0; 1),
+            },
+        },
+        Identifier {
+            name: "a",
+            text_range: [21; 22),
+        }: Reference {
+            from: Identifier {
+                name: "a",
+                text_range: [21; 22),
+            },
+            to: Definition {
+                id: 1,
+                name: "a",
+                text_range: [21; 22),
+            },
+        },
+        Identifier {
+            name: "b",
+            text_range: [43; 44),
+        }: Reference {
+            from: Identifier {
+                name: "b",
+                text_range: [43; 44),
+            },
+            to: Definition {
+                id: 0,
+                name: "b",
+                text_range: [0; 1),
+            },
+        },
+        Identifier {
+            name: "c",
+            text_range: [64; 65),
+        }: Reference {
+            from: Identifier {
+                name: "c",
+                text_range: [64; 65),
+            },
+            to: Definition {
+                id: 2,
+                name: "c",
+                text_range: [64; 65),
+            },
+        },
+        Identifier {
+            name: "a",
+            text_range: [70; 71),
+        }: Reference {
+            from: Identifier {
+                name: "a",
+                text_range: [70; 71),
+            },
+            to: Definition {
+                id: 1,
+                name: "a",
+                text_range: [21; 22),
+            },
+        },
+    },
+}

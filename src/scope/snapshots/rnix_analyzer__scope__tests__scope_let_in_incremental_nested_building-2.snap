@@ -4,54 +4,60 @@ expression: scope_tree
 ---
 InverseScopeTree {
     leaf_scopes: [
-        [
-            Scope {
-                kind: AttrSet,
-                defines: {},
-                text_range: [8; 10),
-            },
-            Scope {
-                kind: LetIn,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [4; 5),
-                    },
+        ScopePath(
+            [
+                Scope {
+                    kind: AttrSet,
+                    defines: {},
+                    text_range: [8; 10),
                 },
-                text_range: [0; 41),
-            },
-        ],
-        [
-            Scope {
-                kind: AttrSet,
-                defines: {},
-                text_range: [29; 31),
-            },
-            Scope {
-                kind: LetIn,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [4; 5),
+                Scope {
+                    kind: LetIn,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [4; 5),
+                        },
                     },
+                    text_range: [0; 41),
                 },
-                text_range: [0; 41),
-            },
-        ],
-        [
-            Scope {
-                kind: LetIn,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [4; 5),
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: AttrSet,
+                    defines: {},
+                    text_range: [29; 31),
+                },
+                Scope {
+                    kind: LetIn,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [4; 5),
+                        },
                     },
+                    text_range: [0; 41),
                 },
-                text_range: [0; 41),
-            },
-        ],
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: LetIn,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [4; 5),
+                        },
+                    },
+                    text_range: [0; 41),
+                },
+            ],
+        ),
     ],
 }

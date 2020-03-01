@@ -1,11 +1,15 @@
 use crate::Scope;
 use rnix::TextRange;
 
+/// InverseScopeTree refers to single instance of a path in the scope tree.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ScopePath(Vec<Scope>);
+
 /// InverseScopeTree refers to a tree of scopes, optimized for seaching Scopes that contain a specific text range.
 #[derive(Debug, PartialEq, Clone)]
 pub struct InverseScopeTree {
     /// This vec is ordered by scope size, so a simple find should find the most specific scope
-    leaf_scopes: Vec<Vec<Scope>>,
+    leaf_scopes: Vec<ScopePath>,
 }
 
 impl InverseScopeTree {
@@ -21,7 +25,7 @@ impl InverseScopeTree {
                     scope_path.push(other_scope.clone());
                 }
             }
-            leaf_scopes.push(scope_path);
+            leaf_scopes.push(ScopePath(scope_path));
         }
 
         InverseScopeTree { leaf_scopes }
@@ -29,9 +33,9 @@ impl InverseScopeTree {
 
     pub fn get_scopes(&self, range: TextRange) -> Option<impl Iterator<Item = &Scope>> {
         let scope = self.leaf_scopes.iter().find(|scopes| {
-            range.is_subrange(&scopes.first().expect("more than one node").text_range)
+            range.is_subrange(&scopes.0.first().expect("more than one node").text_range)
         })?;
-        Some(scope.iter())
+        Some(scope.0.iter())
     }
 }
 

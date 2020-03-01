@@ -4,42 +4,46 @@ expression: scope_tree
 ---
 InverseScopeTree {
     leaf_scopes: [
-        [
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "b": Definition {
-                        id: 1,
-                        name: "b",
-                        text_range: [3; 4),
+        ScopePath(
+            [
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "b": Definition {
+                            id: 1,
+                            name: "b",
+                            text_range: [3; 4),
+                        },
                     },
+                    text_range: [3; 11),
                 },
-                text_range: [3; 11),
-            },
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [0; 1),
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [0; 1),
+                        },
                     },
+                    text_range: [0; 11),
                 },
-                text_range: [0; 11),
-            },
-        ],
-        [
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [0; 1),
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [0; 1),
+                        },
                     },
+                    text_range: [0; 11),
                 },
-                text_range: [0; 11),
-            },
-        ],
+            ],
+        ),
     ],
 }

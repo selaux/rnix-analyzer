@@ -4,23 +4,25 @@ expression: scope_tree
 ---
 InverseScopeTree {
     leaf_scopes: [
-        [
-            Scope {
-                kind: LetIn,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [4; 5),
+        ScopePath(
+            [
+                Scope {
+                    kind: LetIn,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [4; 5),
+                        },
+                        "b": Definition {
+                            id: 1,
+                            name: "b",
+                            text_range: [25; 26),
+                        },
                     },
-                    "b": Definition {
-                        id: 1,
-                        name: "b",
-                        text_range: [25; 26),
-                    },
+                    text_range: [0; 38),
                 },
-                text_range: [0; 38),
-            },
-        ],
+            ],
+        ),
     ],
 }

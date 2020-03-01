@@ -47,6 +47,23 @@ pub struct Scope {
     text_range: TextRange,
 }
 
+impl Scope {
+    /// Get a definition by name in this scope (not including parent scopes).
+    pub fn get_definition(&self, name: &str) -> Option<Definition> {
+        if self.kind == ScopeKind::AttrSet {
+            return None;
+        }
+        self.defines.get(name).cloned()
+    }
+
+    /// Returns true if the scope is able to define all its definitions
+    ///
+    /// This is false e.g. for `with`, as we cannot determine all variable names
+    pub fn is_exhaustive(&self) -> bool {
+        self.kind != ScopeKind::With
+    }
+}
+
 /// This trait is implemented by any nodes that build up their own scope
 trait DefinesScope {
     fn get_scope(

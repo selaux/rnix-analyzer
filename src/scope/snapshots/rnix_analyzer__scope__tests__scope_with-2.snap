@@ -4,12 +4,14 @@ expression: scope_tree
 ---
 InverseScopeTree {
     leaf_scopes: [
-        [
-            Scope {
-                kind: With,
-                defines: {},
-                text_range: [0; 16),
-            },
-        ],
+        ScopePath(
+            [
+                Scope {
+                    kind: With,
+                    defines: {},
+                    text_range: [0; 16),
+                },
+            ],
+        ),
     ],
 }

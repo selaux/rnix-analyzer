@@ -4,125 +4,133 @@ expression: scope_tree
 ---
 InverseScopeTree {
     leaf_scopes: [
-        [
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "d": Definition {
-                        id: 3,
-                        name: "d",
-                        text_range: [60; 61),
+        ScopePath(
+            [
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "d": Definition {
+                            id: 3,
+                            name: "d",
+                            text_range: [60; 61),
+                        },
                     },
+                    text_range: [60; 71),
                 },
-                text_range: [60; 71),
-            },
-            Scope {
-                kind: LetIn,
-                defines: {
-                    "c": Definition {
-                        id: 2,
-                        name: "c",
-                        text_range: [56; 57),
+                Scope {
+                    kind: LetIn,
+                    defines: {
+                        "c": Definition {
+                            id: 2,
+                            name: "c",
+                            text_range: [56; 57),
+                        },
                     },
+                    text_range: [52; 85),
                 },
-                text_range: [52; 85),
-            },
-            Scope {
-                kind: With,
-                defines: {},
-                text_range: [30; 85),
-            },
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [1; 2),
-                    },
-                    "b": Definition {
-                        id: 1,
-                        name: "b",
-                        text_range: [15; 16),
-                    },
+                Scope {
+                    kind: With,
+                    defines: {},
+                    text_range: [30; 85),
                 },
-                text_range: [0; 85),
-            },
-        ],
-        [
-            Scope {
-                kind: LetIn,
-                defines: {
-                    "c": Definition {
-                        id: 2,
-                        name: "c",
-                        text_range: [56; 57),
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [1; 2),
+                        },
+                        "b": Definition {
+                            id: 1,
+                            name: "b",
+                            text_range: [15; 16),
+                        },
                     },
+                    text_range: [0; 85),
                 },
-                text_range: [52; 85),
-            },
-            Scope {
-                kind: With,
-                defines: {},
-                text_range: [30; 85),
-            },
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [1; 2),
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: LetIn,
+                    defines: {
+                        "c": Definition {
+                            id: 2,
+                            name: "c",
+                            text_range: [56; 57),
+                        },
                     },
-                    "b": Definition {
-                        id: 1,
-                        name: "b",
-                        text_range: [15; 16),
-                    },
+                    text_range: [52; 85),
                 },
-                text_range: [0; 85),
-            },
-        ],
-        [
-            Scope {
-                kind: With,
-                defines: {},
-                text_range: [30; 85),
-            },
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [1; 2),
-                    },
-                    "b": Definition {
-                        id: 1,
-                        name: "b",
-                        text_range: [15; 16),
-                    },
+                Scope {
+                    kind: With,
+                    defines: {},
+                    text_range: [30; 85),
                 },
-                text_range: [0; 85),
-            },
-        ],
-        [
-            Scope {
-                kind: Lambda,
-                defines: {
-                    "a": Definition {
-                        id: 0,
-                        name: "a",
-                        text_range: [1; 2),
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [1; 2),
+                        },
+                        "b": Definition {
+                            id: 1,
+                            name: "b",
+                            text_range: [15; 16),
+                        },
                     },
-                    "b": Definition {
-                        id: 1,
-                        name: "b",
-                        text_range: [15; 16),
-                    },
+                    text_range: [0; 85),
                 },
-                text_range: [0; 85),
-            },
-        ],
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: With,
+                    defines: {},
+                    text_range: [30; 85),
+                },
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [1; 2),
+                        },
+                        "b": Definition {
+                            id: 1,
+                            name: "b",
+                            text_range: [15; 16),
+                        },
+                    },
+                    text_range: [0; 85),
+                },
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 0,
+                            name: "a",
+                            text_range: [1; 2),
+                        },
+                        "b": Definition {
+                            id: 1,
+                            name: "b",
+                            text_range: [15; 16),
+                        },
+                    },
+                    text_range: [0; 85),
+                },
+            ],
+        ),
     ],
 }

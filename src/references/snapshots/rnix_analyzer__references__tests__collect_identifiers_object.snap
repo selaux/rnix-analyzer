@@ -1,0 +1,14 @@
+---
+source: src/references/mod.rs
+expression: identifiers
+---
+[
+    Identifier {
+        name: "b",
+        text_range: [0; 1),
+    },
+    Identifier {
+        name: "b",
+        text_range: [39; 40),
+    },
+]
