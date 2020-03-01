@@ -1,0 +1,12 @@
+---
+source: src/scope.rs
+expression: scopes.1
+---
+[
+    AlreadyDefined(
+        LetIn,
+        "builtins",
+        [26; 34),
+        [4; 12),
+    ),
+]

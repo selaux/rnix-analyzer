@@ -1,0 +1,17 @@
+[package]
+name = "rnix-analyzer"
+version = "0.1.0"
+authors = ["Stefan Lau <github@stefanlau.com>"]
+edition = "2018"
+
+[dependencies]
+rnix = { path = "../rnix-parser" }
+
+[dev-dependencies]
+insta = "0.13.1"
+criterion = "0.3.0"
+
+[[bench]]
+name = "all-packages"
+path = "./benches/all-packages.rs"
+harness = false

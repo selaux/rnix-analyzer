@@ -1,0 +1,27 @@
+---
+source: src/scope.rs
+expression: scopes.0
+---
+[
+    Scope {
+        kind: Lambda,
+        defines: {
+            "a": Definition {
+                id: 0,
+                name: "a",
+                text_range: [1; 2),
+            },
+            "b": Definition {
+                id: 1,
+                name: "b",
+                text_range: [4; 5),
+            },
+            "c": Definition {
+                id: 2,
+                name: "c",
+                text_range: [7; 8),
+            },
+        },
+        text_range: [0; 21),
+    },
+]
