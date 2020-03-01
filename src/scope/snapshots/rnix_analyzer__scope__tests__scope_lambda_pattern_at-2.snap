@@ -10,17 +10,214 @@ InverseScopeTree {
                     kind: Lambda,
                     defines: {
                         "a": Definition {
-                            id: 0,
+                            id: 16,
                             name: "a",
                             text_range: [1; 2),
                         },
                         "b": Definition {
-                            id: 1,
+                            id: 17,
                             name: "b",
                             text_range: [4; 5),
                         },
                         "c": Definition {
+                            id: 18,
+                            name: "c",
+                            text_range: [7; 8),
+                        },
+                    },
+                    text_range: [0; 21),
+                },
+                Scope {
+                    kind: Root,
+                    defines: {
+                        "abort": Definition {
+                            id: 4,
+                            name: "abort",
+                            text_range: [0; 0),
+                        },
+                        "baseNameOf": Definition {
+                            id: 5,
+                            name: "baseNameOf",
+                            text_range: [0; 0),
+                        },
+                        "builtins": Definition {
+                            id: 6,
+                            name: "builtins",
+                            text_range: [0; 0),
+                        },
+                        "derivation": Definition {
+                            id: 7,
+                            name: "derivation",
+                            text_range: [0; 0),
+                        },
+                        "dirOf": Definition {
+                            id: 8,
+                            name: "dirOf",
+                            text_range: [0; 0),
+                        },
+                        "false": Definition {
+                            id: 1,
+                            name: "false",
+                            text_range: [0; 0),
+                        },
+                        "fetchTarball": Definition {
+                            id: 9,
+                            name: "fetchTarball",
+                            text_range: [0; 0),
+                        },
+                        "import": Definition {
+                            id: 10,
+                            name: "import",
+                            text_range: [0; 0),
+                        },
+                        "isNull": Definition {
+                            id: 11,
+                            name: "isNull",
+                            text_range: [0; 0),
+                        },
+                        "map": Definition {
+                            id: 12,
+                            name: "map",
+                            text_range: [0; 0),
+                        },
+                        "null": Definition {
                             id: 2,
+                            name: "null",
+                            text_range: [0; 0),
+                        },
+                        "placeholder": Definition {
+                            id: 13,
+                            name: "placeholder",
+                            text_range: [0; 0),
+                        },
+                        "removeAttrs": Definition {
+                            id: 14,
+                            name: "removeAttrs",
+                            text_range: [0; 0),
+                        },
+                        "throw": Definition {
+                            id: 3,
+                            name: "throw",
+                            text_range: [0; 0),
+                        },
+                        "toString": Definition {
+                            id: 15,
+                            name: "toString",
+                            text_range: [0; 0),
+                        },
+                        "true": Definition {
+                            id: 0,
+                            name: "true",
+                            text_range: [0; 0),
+                        },
+                    },
+                    text_range: [0; 21),
+                },
+            ],
+        ),
+        ScopePath(
+            [
+                Scope {
+                    kind: Root,
+                    defines: {
+                        "abort": Definition {
+                            id: 4,
+                            name: "abort",
+                            text_range: [0; 0),
+                        },
+                        "baseNameOf": Definition {
+                            id: 5,
+                            name: "baseNameOf",
+                            text_range: [0; 0),
+                        },
+                        "builtins": Definition {
+                            id: 6,
+                            name: "builtins",
+                            text_range: [0; 0),
+                        },
+                        "derivation": Definition {
+                            id: 7,
+                            name: "derivation",
+                            text_range: [0; 0),
+                        },
+                        "dirOf": Definition {
+                            id: 8,
+                            name: "dirOf",
+                            text_range: [0; 0),
+                        },
+                        "false": Definition {
+                            id: 1,
+                            name: "false",
+                            text_range: [0; 0),
+                        },
+                        "fetchTarball": Definition {
+                            id: 9,
+                            name: "fetchTarball",
+                            text_range: [0; 0),
+                        },
+                        "import": Definition {
+                            id: 10,
+                            name: "import",
+                            text_range: [0; 0),
+                        },
+                        "isNull": Definition {
+                            id: 11,
+                            name: "isNull",
+                            text_range: [0; 0),
+                        },
+                        "map": Definition {
+                            id: 12,
+                            name: "map",
+                            text_range: [0; 0),
+                        },
+                        "null": Definition {
+                            id: 2,
+                            name: "null",
+                            text_range: [0; 0),
+                        },
+                        "placeholder": Definition {
+                            id: 13,
+                            name: "placeholder",
+                            text_range: [0; 0),
+                        },
+                        "removeAttrs": Definition {
+                            id: 14,
+                            name: "removeAttrs",
+                            text_range: [0; 0),
+                        },
+                        "throw": Definition {
+                            id: 3,
+                            name: "throw",
+                            text_range: [0; 0),
+                        },
+                        "toString": Definition {
+                            id: 15,
+                            name: "toString",
+                            text_range: [0; 0),
+                        },
+                        "true": Definition {
+                            id: 0,
+                            name: "true",
+                            text_range: [0; 0),
+                        },
+                    },
+                    text_range: [0; 21),
+                },
+                Scope {
+                    kind: Lambda,
+                    defines: {
+                        "a": Definition {
+                            id: 16,
+                            name: "a",
+                            text_range: [1; 2),
+                        },
+                        "b": Definition {
+                            id: 17,
+                            name: "b",
+                            text_range: [4; 5),
+                        },
+                        "c": Definition {
+                            id: 18,
                             name: "c",
                             text_range: [7; 8),
                         },

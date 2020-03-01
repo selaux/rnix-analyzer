@@ -1,13 +1,15 @@
 use crate::{Definition, InverseScopeTree};
-use rnix::types::{AttrSet, Ident, Inherit, Key, KeyValue, TokenWrapper, TypedNode};
+use rnix::types::{
+    AttrSet, BinOp, BinOpKind, Ident, Inherit, Key, KeyValue, TokenWrapper, TypedNode,
+};
 use rnix::{SyntaxKind, TextRange, AST};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Identifier {
-    name: String,
-    text_range: TextRange,
+    pub name: String,
+    pub text_range: TextRange,
 }
 
 impl Ord for Identifier {
@@ -55,6 +57,28 @@ fn collect_identifiers(ast: &AST) -> impl Iterator<Item = Identifier> {
                 .and_then(Inherit::cast)
                 .and_then(|inherit| inherit.from());
             parent.is_none()
+        })
+        .filter(|ident| {
+            // Filter identifiers in object contains
+            let binop = ident
+                .node()
+                .parent()
+                .and_then(|node| match node.kind() {
+                    SyntaxKind::NODE_BIN_OP => Some(node),
+                    SyntaxKind::NODE_SELECT => node.parent(),
+                    _ => None,
+                })
+                .and_then(BinOp::cast);
+            if let Some(binop) = binop {
+                let im_right = binop
+                    .rhs()
+                    .map(|node| node.text_range().start() == ident.node().text_range().start())
+                    .unwrap_or(false);
+                let kind = binop.operator();
+                kind != BinOpKind::IsSet || !im_right
+            } else {
+                true
+            }
         })
         .map(|ident| Identifier {
             name: ident.as_str().to_owned(),
@@ -150,6 +174,16 @@ mod tests {
     #[test]
     fn test_references_let_in_object() {
         assert_refences_snapshot("let a.b = 1; in a.b");
+    }
+
+    #[test]
+    fn test_references_object_contains() {
+        assert_refences_snapshot("let a.b = 1; in a ? c");
+    }
+
+    #[test]
+    fn test_references_object_contains_path() {
+        assert_refences_snapshot("let a.b = 1; in a ? c.d");
     }
 
     #[test]

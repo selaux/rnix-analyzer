@@ -2,7 +2,7 @@ use rnix::{
     types::{
         AttrSet, EntryHolder, Ident, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With,
     },
-    SyntaxNode, TextRange,
+    SyntaxNode, TextRange, TextUnit,
 };
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
@@ -18,9 +18,50 @@ pub struct Definition {
     text_range: TextRange,
 }
 
+fn insert_root_definition(
+    idx: usize,
+    name: &str,
+    defines: &mut BTreeMap<String, Definition>,
+) -> usize {
+    defines.insert(
+        name.to_owned(),
+        Definition {
+            id: idx,
+            name: name.to_owned(),
+            text_range: TextRange::from_to(TextUnit::from(0), TextUnit::from(0)),
+        },
+    );
+    idx + 1
+}
+
+// Returns the defines of the root node
+pub fn root_defines(mut idx: usize) -> (usize, BTreeMap<String, Definition>) {
+    let mut defines = BTreeMap::new();
+
+    idx = insert_root_definition(idx, "true", &mut defines);
+    idx = insert_root_definition(idx, "false", &mut defines);
+    idx = insert_root_definition(idx, "null", &mut defines);
+    idx = insert_root_definition(idx, "throw", &mut defines);
+    idx = insert_root_definition(idx, "abort", &mut defines);
+    idx = insert_root_definition(idx, "baseNameOf", &mut defines);
+    idx = insert_root_definition(idx, "builtins", &mut defines);
+    idx = insert_root_definition(idx, "derivation", &mut defines);
+    idx = insert_root_definition(idx, "dirOf", &mut defines);
+    idx = insert_root_definition(idx, "fetchTarball", &mut defines);
+    idx = insert_root_definition(idx, "import", &mut defines);
+    idx = insert_root_definition(idx, "isNull", &mut defines);
+    idx = insert_root_definition(idx, "map", &mut defines);
+    idx = insert_root_definition(idx, "placeholder", &mut defines);
+    idx = insert_root_definition(idx, "removeAttrs", &mut defines);
+    idx = insert_root_definition(idx, "toString", &mut defines);
+
+    (idx, defines)
+}
+
 /// The kind of scope that is defined
 #[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub enum ScopeKind {
+    Root,
     With,
     LetIn,
     AttrSet,
@@ -364,7 +405,8 @@ where
 pub fn collect_scopes(ast: &rnix::AST) -> (Vec<Scope>, Vec<ScopeAnalysisError>) {
     let mut scopes = vec![];
     let mut errors_global = vec![];
-    let mut idx = 0;
+    let idx = 0;
+    let (mut idx, root_defines) = root_defines(idx);
 
     for node in ast.node().descendants() {
         match ParsedType::try_from(node.clone()) {
@@ -383,6 +425,12 @@ pub fn collect_scopes(ast: &rnix::AST) -> (Vec<Scope>, Vec<ScopeAnalysisError>) 
             _ => {}
         }
     }
+
+    scopes.push(Scope {
+        kind: ScopeKind::Root,
+        defines: root_defines,
+        text_range: ast.node().text_range(),
+    });
 
     (scopes, errors_global)
 }

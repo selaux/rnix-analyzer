@@ -27,7 +27,7 @@ References {
                 text_range: [0; 1),
             },
             to: Definition {
-                id: 0,
+                id: 16,
                 name: "a",
                 text_range: [0; 1),
             },
@@ -41,7 +41,7 @@ References {
                 text_range: [8; 9),
             },
             to: Definition {
-                id: 0,
+                id: 16,
                 name: "a",
                 text_range: [0; 1),
             },
