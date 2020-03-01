@@ -1,51 +1,42 @@
-use crate::Scope;
-use rnix::TextRange;
+use crate::{Scope, ScopeId};
+use id_arena::Arena;
 
 /// InverseScopeTree refers to single instance of a path in the scope tree.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ScopePath(Vec<Scope>);
+pub struct ScopePath(pub Vec<ScopeId>);
 
 /// InverseScopeTree refers to a tree of scopes, optimized for seaching Scopes that contain a specific text range.
 #[derive(Debug, PartialEq, Clone)]
 pub struct InverseScopeTree {
     /// This vec is ordered by scope size, so a simple find should find the most specific scope
-    leaf_scopes: Vec<ScopePath>,
+    pub leaf_scopes: Vec<ScopePath>,
 }
 
 impl InverseScopeTree {
     /// Build a inverse scope tree from a list of scopes that might include each other
-    pub fn from_scopes(scopes: &[Scope]) -> InverseScopeTree {
+    pub fn from_scopes(scope_arena: &Arena<Scope>) -> InverseScopeTree {
         let mut leaf_scopes = vec![];
-        let mut scopes = scopes.to_owned();
+        let mut scopes: Vec<_> = scope_arena.iter().map(|(_id, val)| val).collect();
         scopes.sort_by(|s1, s2| s1.text_range.len().cmp(&s2.text_range.len()));
         for scope in scopes.iter() {
-            let mut scope_path = vec![scope.clone()];
+            let mut scope_path = vec![scope];
             for other_scope in scopes.iter() {
                 if scope != other_scope && scope.text_range.is_subrange(&other_scope.text_range) {
-                    scope_path.push(other_scope.clone());
+                    scope_path.push(other_scope);
                 }
             }
-            leaf_scopes.push(ScopePath(scope_path));
+            leaf_scopes.push(ScopePath(scope_path.into_iter().map(|s| s.id).collect()));
         }
 
         InverseScopeTree { leaf_scopes }
-    }
-
-    pub fn get_scopes(&self, range: TextRange) -> Option<impl Iterator<Item = &Scope>> {
-        let scope = self.leaf_scopes.iter().find(|scopes| {
-            range.is_subrange(&scopes.0.first().expect("more than one node").text_range)
-        })?;
-        Some(scope.0.iter())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
     use crate::{AnalysisError, AnalysisOptions, AnalysisResult};
     use insta::assert_debug_snapshot;
-    use rnix::TextUnit;
+    use rnix::{TextRange, TextUnit};
     use std::process::Command;
     use std::str;
 
@@ -79,12 +70,7 @@ mod tests {
         let result = AnalysisResult::from(&parse_result, &analysis_options);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
-        let scopes: Vec<_> = result.scopes().cloned().collect();
-        let scope_tree = InverseScopeTree::from_scopes(scopes.as_slice());
-        let scopes: Vec<_> = scope_tree
-            .get_scopes(range)
-            .expect("should return a scope")
-            .collect();
+        let scopes: Vec<_> = result.get_scopes(range).expect("should return a scope");
         assert_debug_snapshot!(scopes);
     }
 }

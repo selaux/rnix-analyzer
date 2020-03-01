@@ -1,4 +1,4 @@
-use rnix::AST;
+use rnix::{TextRange, AST};
 
 mod references;
 mod scope;
@@ -8,7 +8,10 @@ mod scope;
 pub struct AnalysisOptions {}
 
 pub use references::{Identifier, Reference, ReferenceError, References};
-pub use scope::{Definition, InverseScopeTree, Scope, ScopeAnalysisError, ScopeKind};
+pub use scope::{
+    Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
+    Scopes,
+};
 
 /// Error that occured during code analysis
 #[derive(Debug, PartialEq, Clone)]
@@ -34,8 +37,7 @@ impl From<&ReferenceError> for AnalysisError {
 /// Analysis result of a code analysis run
 #[derive(Debug, PartialEq, Clone)]
 pub struct AnalysisResult {
-    scopes: Vec<Scope>,
-    scope_tree: InverseScopeTree,
+    scopes: Scopes,
     references: References,
     errors: Vec<AnalysisError>,
 }
@@ -44,8 +46,7 @@ impl AnalysisResult {
     /// Analyze the code within `ast` and return the resulting `AnalysisResult`
     pub fn from(ast: &AST, _options: &AnalysisOptions) -> Self {
         let (scopes, scope_errors) = scope::collect_scopes(&ast);
-        let scope_tree = InverseScopeTree::from_scopes(&scopes);
-        let (references, reference_errors) = References::from_ast_and_scope_tree(ast, &scope_tree);
+        let (references, reference_errors) = References::from_ast_and_scope_tree(ast, &scopes);
         let errors: Vec<_> = scope_errors
             .iter()
             .map(AnalysisError::from)
@@ -53,7 +54,6 @@ impl AnalysisResult {
             .collect();
         AnalysisResult {
             scopes,
-            scope_tree,
             references,
             errors,
         }
@@ -65,7 +65,30 @@ impl AnalysisResult {
     }
 
     /// Returns all scopes encountered in the code
+    pub fn definitions(&self) -> impl Iterator<Item = &Definition> {
+        self.scopes
+            .definition_arena
+            .iter()
+            .map(|(_id, definition)| definition)
+    }
+
+    /// Returns all scopes encountered in the code
     pub fn scopes(&self) -> impl Iterator<Item = &Scope> {
-        self.scopes.iter()
+        self.scopes.scope_arena.iter().map(|(_id, val)| val)
+    }
+
+    /// Returns the applicable scopes for a given text range
+    pub fn get_scopes(&self, range: TextRange) -> Option<Vec<&Scope>> {
+        self.scopes.get_scopes(range)
+    }
+
+    /// Returns the applicable scopes for a given text range
+    pub fn get_identifiers(&self) -> Option<Vec<&Identifier>> {
+        Some(self.references.get_identifiers())
+    }
+
+    /// Returns the inverse scope tree
+    pub fn inverse_scope_tree(&self) -> &InverseScopeTree {
+        &self.scopes.scope_tree
     }
 }

@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 rnix = { path = "../rnix-parser" }
+id-arena = "2.2.1"
 
 [dev-dependencies]
 insta = "0.13.1"

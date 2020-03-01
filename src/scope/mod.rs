@@ -1,3 +1,4 @@
+use id_arena::{Arena, Id as ArenaId};
 use rnix::{
     types::{
         AttrSet, EntryHolder, Ident, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With,
@@ -10,52 +11,52 @@ use std::convert::TryFrom;
 pub mod tree;
 pub use tree::*;
 
+/// Unique Id of a definition
+pub type DefinitionId = ArenaId<Definition>;
+
 /// A definition of a variable inside a Scope
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Definition {
-    id: usize,
+    id: DefinitionId,
     name: String,
     text_range: TextRange,
 }
 
 fn insert_root_definition(
-    idx: usize,
+    arena: &mut Arena<Definition>,
     name: &str,
-    defines: &mut BTreeMap<String, Definition>,
-) -> usize {
-    defines.insert(
-        name.to_owned(),
-        Definition {
-            id: idx,
-            name: name.to_owned(),
-            text_range: TextRange::from_to(TextUnit::from(0), TextUnit::from(0)),
-        },
-    );
-    idx + 1
+    defines: &mut BTreeMap<String, DefinitionId>,
+) {
+    let definition_id = arena.alloc_with_id(|id| Definition {
+        id,
+        name: name.to_owned(),
+        text_range: TextRange::from_to(TextUnit::from(0), TextUnit::from(0)),
+    });
+    defines.insert(name.to_owned(), definition_id);
 }
 
 // Returns the defines of the root node
-pub fn root_defines(mut idx: usize) -> (usize, BTreeMap<String, Definition>) {
+pub fn root_defines(arena: &mut Arena<Definition>) -> BTreeMap<String, DefinitionId> {
     let mut defines = BTreeMap::new();
 
-    idx = insert_root_definition(idx, "true", &mut defines);
-    idx = insert_root_definition(idx, "false", &mut defines);
-    idx = insert_root_definition(idx, "null", &mut defines);
-    idx = insert_root_definition(idx, "throw", &mut defines);
-    idx = insert_root_definition(idx, "abort", &mut defines);
-    idx = insert_root_definition(idx, "baseNameOf", &mut defines);
-    idx = insert_root_definition(idx, "builtins", &mut defines);
-    idx = insert_root_definition(idx, "derivation", &mut defines);
-    idx = insert_root_definition(idx, "dirOf", &mut defines);
-    idx = insert_root_definition(idx, "fetchTarball", &mut defines);
-    idx = insert_root_definition(idx, "import", &mut defines);
-    idx = insert_root_definition(idx, "isNull", &mut defines);
-    idx = insert_root_definition(idx, "map", &mut defines);
-    idx = insert_root_definition(idx, "placeholder", &mut defines);
-    idx = insert_root_definition(idx, "removeAttrs", &mut defines);
-    idx = insert_root_definition(idx, "toString", &mut defines);
+    insert_root_definition(arena, "true", &mut defines);
+    insert_root_definition(arena, "false", &mut defines);
+    insert_root_definition(arena, "null", &mut defines);
+    insert_root_definition(arena, "throw", &mut defines);
+    insert_root_definition(arena, "abort", &mut defines);
+    insert_root_definition(arena, "baseNameOf", &mut defines);
+    insert_root_definition(arena, "builtins", &mut defines);
+    insert_root_definition(arena, "derivation", &mut defines);
+    insert_root_definition(arena, "dirOf", &mut defines);
+    insert_root_definition(arena, "fetchTarball", &mut defines);
+    insert_root_definition(arena, "import", &mut defines);
+    insert_root_definition(arena, "isNull", &mut defines);
+    insert_root_definition(arena, "map", &mut defines);
+    insert_root_definition(arena, "placeholder", &mut defines);
+    insert_root_definition(arena, "removeAttrs", &mut defines);
+    insert_root_definition(arena, "toString", &mut defines);
 
-    (idx, defines)
+    defines
 }
 
 /// The kind of scope that is defined
@@ -78,19 +79,23 @@ pub enum ScopeAnalysisError {
     AlreadyDefined(ScopeKind, String, TextRange, TextRange),
 }
 
+/// Unique Id of a scope
+pub type ScopeId = ArenaId<Scope>;
+
 /// Scope refers to anything that defines a set of variables or attributes.
 ///
 /// It is a superset of lexical nix scopes that includes attribute set scopes that do not use `rec`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
+    id: ScopeId,
     kind: ScopeKind,
-    defines: BTreeMap<String, Definition>,
-    text_range: TextRange,
+    defines: BTreeMap<String, DefinitionId>,
+    pub text_range: TextRange,
 }
 
 impl Scope {
     /// Get a definition by name in this scope (not including parent scopes).
-    pub fn get_definition(&self, name: &str) -> Option<Definition> {
+    pub fn get_definition(&self, name: &str) -> Option<DefinitionId> {
         if self.kind == ScopeKind::AttrSet {
             return None;
         }
@@ -105,159 +110,198 @@ impl Scope {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Scopes {
+    pub definition_arena: Arena<Definition>,
+    pub scope_arena: Arena<Scope>,
+    pub scope_tree: InverseScopeTree,
+}
+
+impl Scopes {
+    /// Returns the applicable scopes for a given text range
+    pub fn get_scopes(&self, range: TextRange) -> Option<Vec<&Scope>> {
+        let scope = self.scope_tree.leaf_scopes.iter().find(|scopes| {
+            let id = scopes.0.first().expect("more than one node");
+            range.is_subrange(&self.scope_arena[*id].text_range)
+        })?;
+        Some(scope.0.iter().map(|id| &self.scope_arena[*id]).collect())
+    }
+}
+
 /// This trait is implemented by any nodes that build up their own scope
 trait DefinesScope {
     fn get_scope(
         &self,
-        idx: usize,
+        definition_arena: &mut Arena<Definition>,
+        scope_arena: &mut Arena<Scope>,
         node: &SyntaxNode,
-        scopes: &mut Vec<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) -> usize;
+    );
 }
 
 impl DefinesScope for With {
     fn get_scope(
         &self,
-        idx: usize,
+        _definition_arena: &mut Arena<Definition>,
+        scope_arena: &mut Arena<Scope>,
         node: &SyntaxNode,
-        scopes: &mut Vec<Scope>,
         _errors: &mut Vec<ScopeAnalysisError>,
-    ) -> usize {
-        scopes.push(Scope {
+    ) {
+        scope_arena.alloc_with_id(|id| Scope {
+            id,
             kind: ScopeKind::With,
             defines: BTreeMap::new(),
             text_range: node.text_range(),
         });
-        idx
     }
 }
 
 impl DefinesScope for LetIn {
     fn get_scope(
         &self,
-        idx: usize,
+        definition_arena: &mut Arena<Definition>,
+        scope_arena: &mut Arena<Scope>,
         node: &SyntaxNode,
-        scopes: &mut Vec<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) -> usize {
+    ) {
         let mut defines = BTreeMap::new();
-        let mut idx = populate_from_entries(ScopeKind::LetIn, self, &mut defines, errors, idx);
+        populate_from_entries(
+            ScopeKind::LetIn,
+            self,
+            &mut defines,
+            errors,
+            definition_arena,
+        );
         for inherit in self.inherits() {
             for ident in inherit.idents() {
-                idx = insert_into_defines(ScopeKind::LetIn, &mut defines, &ident, errors, idx);
+                insert_into_defines(
+                    ScopeKind::LetIn,
+                    &mut defines,
+                    &ident,
+                    errors,
+                    definition_arena,
+                );
             }
         }
 
-        scopes.push(Scope {
+        scope_arena.alloc_with_id(|id| Scope {
+            id,
             kind: ScopeKind::LetIn,
             defines,
             text_range: node.text_range(),
         });
-
-        idx
     }
 }
 
 impl DefinesScope for AttrSet {
     fn get_scope(
         &self,
-        idx: usize,
+        definition_arena: &mut Arena<Definition>,
+        scope_arena: &mut Arena<Scope>,
         node: &SyntaxNode,
-        scopes: &mut Vec<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) -> usize {
+    ) {
         let mut defines = BTreeMap::new();
         let scope_kind = if self.recursive() {
             ScopeKind::RecursiveAttrSet
         } else {
             ScopeKind::AttrSet
         };
-        let mut idx = populate_from_entries(scope_kind, self, &mut defines, errors, idx);
+        populate_from_entries(scope_kind, self, &mut defines, errors, definition_arena);
         for inherit in self.inherits() {
             for ident in inherit.idents() {
-                idx = insert_into_defines(ScopeKind::LetIn, &mut defines, &ident, errors, idx);
+                insert_into_defines(
+                    ScopeKind::LetIn,
+                    &mut defines,
+                    &ident,
+                    errors,
+                    definition_arena,
+                );
             }
         }
-        scopes.push(Scope {
+        scope_arena.alloc_with_id(|id| Scope {
+            id,
             kind: scope_kind,
             defines,
             text_range: node.text_range(),
         });
-
-        idx
     }
 }
 
 impl DefinesScope for Lambda {
     fn get_scope(
         &self,
-        mut idx: usize,
+        definition_arena: &mut Arena<Definition>,
+        scope_arena: &mut Arena<Scope>,
         node: &SyntaxNode,
-        scopes: &mut Vec<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) -> usize {
+    ) {
         let mut defines = BTreeMap::new();
         let arg_definition = self.arg().and_then(|arg| ParsedType::try_from(arg).ok());
         match arg_definition {
-            Some(ParsedType::Ident(ident)) => {
-                idx = insert_into_defines(ScopeKind::Lambda, &mut defines, &ident, errors, idx)
-            }
+            Some(ParsedType::Ident(ident)) => insert_into_defines(
+                ScopeKind::Lambda,
+                &mut defines,
+                &ident,
+                errors,
+                definition_arena,
+            ),
             Some(ParsedType::Pattern(pattern)) => {
                 for entry in pattern.entries() {
                     if let Some(ident) = entry.name() {
-                        idx = insert_into_defines(
+                        insert_into_defines(
                             ScopeKind::Lambda,
                             &mut defines,
                             &ident,
                             errors,
-                            idx,
+                            definition_arena,
                         )
                     }
                 }
                 if let Some(ident) = pattern.bind() {
-                    idx = insert_into_defines(ScopeKind::Lambda, &mut defines, &ident, errors, idx)
+                    insert_into_defines(
+                        ScopeKind::Lambda,
+                        &mut defines,
+                        &ident,
+                        errors,
+                        definition_arena,
+                    )
                 }
             }
             _ => {}
         }
 
-        scopes.push(Scope {
+        scope_arena.alloc_with_id(|id| Scope {
+            id,
             kind: ScopeKind::Lambda,
             defines,
             text_range: node.text_range(),
         });
-
-        idx
     }
 }
 
 fn insert_into_defines(
     scope_kind: ScopeKind,
-    defines: &mut BTreeMap<String, Definition>,
+    defines: &mut BTreeMap<String, DefinitionId>,
     ident: &Ident,
     errors: &mut Vec<ScopeAnalysisError>,
-    idx: usize,
-) -> usize {
+    arena: &mut Arena<Definition>,
+) {
     let name = ident.as_str().to_owned();
     if let Some(existing) = defines.get(&name) {
         errors.push(ScopeAnalysisError::AlreadyDefined(
             scope_kind,
             name,
             ident.node().text_range(),
-            existing.text_range,
+            arena[*existing].text_range,
         ));
-        idx
     } else {
-        defines.insert(
-            name.to_owned(),
-            Definition {
-                id: idx,
-                name,
-                text_range: ident.node().text_range(),
-            },
-        );
-        idx + 1
+        let id = arena.alloc_with_id(|id| Definition {
+            id,
+            name: name.clone(),
+            text_range: ident.node().text_range(),
+        });
+        defines.insert(name.to_owned(), id);
     }
 }
 
@@ -323,11 +367,10 @@ fn is_descendant_path(parent: &str, child: &str) -> bool {
 fn populate_from_entries<T>(
     scope_kind: ScopeKind,
     set: &T,
-    defines: &mut BTreeMap<String, Definition>,
+    defines: &mut BTreeMap<String, DefinitionId>,
     errors: &mut Vec<ScopeAnalysisError>,
-    mut idx: usize,
-) -> usize
-where
+    arena: &mut Arena<Definition>,
+) where
     T: EntryHolder,
 {
     let mut already_defined: BTreeMap<String, (Vec<Ident>, Option<AttrSet>)> = BTreeMap::new();
@@ -356,7 +399,7 @@ where
                     .collect::<Vec<String>>()
                     .join(".");
                 if path.len() < 2 {
-                    idx = insert_into_defines(scope_kind, defines, &ident, errors, idx);
+                    insert_into_defines(scope_kind, defines, &ident, errors, arena);
                     if let Some(value_as_attrset) = value_as_attrset.clone() {
                         populate_already_defined_from_attrset(
                             &mut already_defined,
@@ -382,7 +425,7 @@ where
                             text_range_definition,
                         ))
                     } else if !defines.contains_key(&ident_str) {
-                        idx = insert_into_defines(scope_kind, defines, &ident, errors, idx);
+                        insert_into_defines(scope_kind, defines, &ident, errors, arena);
                         if let Some(value_as_attrset) = value_as_attrset.clone() {
                             populate_already_defined_from_attrset(
                                 &mut already_defined,
@@ -397,42 +440,68 @@ where
             }
         }
     }
-
-    idx
 }
 
 /// Collect scopes from the AST, returns scopes and errors encountered during scope analysis
-pub fn collect_scopes(ast: &rnix::AST) -> (Vec<Scope>, Vec<ScopeAnalysisError>) {
-    let mut scopes = vec![];
+pub fn collect_scopes(ast: &rnix::AST) -> (Scopes, Vec<ScopeAnalysisError>) {
     let mut errors_global = vec![];
-    let idx = 0;
-    let (mut idx, root_defines) = root_defines(idx);
-
-    for node in ast.node().descendants() {
-        match ParsedType::try_from(node.clone()) {
-            Ok(ParsedType::With(with)) => {
-                idx = with.get_scope(idx, &node, &mut scopes, &mut errors_global);
-            }
-            Ok(ParsedType::LetIn(let_in)) => {
-                idx = let_in.get_scope(idx, &node, &mut scopes, &mut errors_global);
-            }
-            Ok(ParsedType::AttrSet(attrset)) => {
-                idx = attrset.get_scope(idx, &node, &mut scopes, &mut errors_global);
-            }
-            Ok(ParsedType::Lambda(lambda)) => {
-                idx = lambda.get_scope(idx, &node, &mut scopes, &mut errors_global);
-            }
-            _ => {}
-        }
-    }
-
-    scopes.push(Scope {
+    let mut definition_arena = Arena::new();
+    let mut scope_arena = Arena::new();
+    let root_defines = root_defines(&mut definition_arena);
+    scope_arena.alloc_with_id(|id| Scope {
+        id,
         kind: ScopeKind::Root,
         defines: root_defines,
         text_range: ast.node().text_range(),
     });
 
-    (scopes, errors_global)
+    for node in ast.node().descendants() {
+        match ParsedType::try_from(node.clone()) {
+            Ok(ParsedType::With(with)) => {
+                with.get_scope(
+                    &mut definition_arena,
+                    &mut scope_arena,
+                    &node,
+                    &mut errors_global,
+                );
+            }
+            Ok(ParsedType::LetIn(let_in)) => {
+                let_in.get_scope(
+                    &mut definition_arena,
+                    &mut scope_arena,
+                    &node,
+                    &mut errors_global,
+                );
+            }
+            Ok(ParsedType::AttrSet(attrset)) => {
+                attrset.get_scope(
+                    &mut definition_arena,
+                    &mut scope_arena,
+                    &node,
+                    &mut errors_global,
+                );
+            }
+            Ok(ParsedType::Lambda(lambda)) => {
+                lambda.get_scope(
+                    &mut definition_arena,
+                    &mut scope_arena,
+                    &node,
+                    &mut errors_global,
+                );
+            }
+            _ => {}
+        }
+    }
+    let scope_tree = InverseScopeTree::from_scopes(&scope_arena);
+
+    (
+        Scopes {
+            definition_arena,
+            scope_arena,
+            scope_tree,
+        },
+        errors_global,
+    )
 }
 
 #[cfg(test)]
@@ -440,7 +509,7 @@ mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::{AnalysisError, AnalysisOptions, AnalysisResult};
-    use insta::assert_debug_snapshot;
+    use insta::{assert_debug_snapshot, assert_display_snapshot};
     use std::process::Command;
     use std::str;
 
@@ -606,9 +675,14 @@ mod tests {
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
         let scopes: Vec<_> = result.scopes().cloned().collect();
-        assert_debug_snapshot!(scopes);
-        let scope_tree = InverseScopeTree::from_scopes(&scopes);
-        assert_debug_snapshot!(scope_tree);
+        let definitions: Vec<_> = result.definitions().cloned().collect();
+        assert_display_snapshot!(format!(
+            "{}\n=========\n{:#?}\n=========\n{:#?}\n=========\n{:#?}",
+            nix_code,
+            definitions,
+            scopes,
+            result.inverse_scope_tree()
+        ));
     }
 
     fn run_error_snapshot_test(nix_code: &str) {

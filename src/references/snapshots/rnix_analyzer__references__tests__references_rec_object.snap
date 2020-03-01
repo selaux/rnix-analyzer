@@ -1,100 +1,100 @@
 ---
 source: src/references/mod.rs
-expression: references.0
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, references . 0 .\n        get_identifiers (), references . 0 . references)"
 ---
-References {
-    identifiers: [
-        Identifier {
-            name: "b",
-            text_range: [0; 1),
+b: rec {
+            a = 1;
+            "${b}" = 2;
+            c.d = a;
+        }
+=========
+[
+    Identifier {
+        id: Id {
+            idx: 0,
         },
-        Identifier {
-            name: "a",
-            text_range: [21; 22),
+        name: "b",
+        text_range: [0; 1),
+    },
+    Identifier {
+        id: Id {
+            idx: 1,
         },
-        Identifier {
-            name: "b",
-            text_range: [43; 44),
+        name: "a",
+        text_range: [21; 22),
+    },
+    Identifier {
+        id: Id {
+            idx: 2,
         },
-        Identifier {
-            name: "c",
-            text_range: [64; 65),
+        name: "b",
+        text_range: [43; 44),
+    },
+    Identifier {
+        id: Id {
+            idx: 3,
         },
-        Identifier {
-            name: "a",
-            text_range: [70; 71),
+        name: "c",
+        text_range: [64; 65),
+    },
+    Identifier {
+        id: Id {
+            idx: 4,
         },
-    ],
-    references: {
-        Identifier {
-            name: "b",
-            text_range: [0; 1),
-        }: Reference {
-            from: Identifier {
-                name: "b",
-                text_range: [0; 1),
-            },
-            to: Definition {
-                id: 16,
-                name: "b",
-                text_range: [0; 1),
-            },
+        name: "a",
+        text_range: [70; 71),
+    },
+]
+=========
+{
+    Id {
+        idx: 0,
+    }: Reference {
+        from: Id {
+            idx: 0,
         },
-        Identifier {
-            name: "a",
-            text_range: [21; 22),
-        }: Reference {
-            from: Identifier {
-                name: "a",
-                text_range: [21; 22),
-            },
-            to: Definition {
-                id: 17,
-                name: "a",
-                text_range: [21; 22),
-            },
+        to: Id {
+            idx: 16,
         },
-        Identifier {
-            name: "b",
-            text_range: [43; 44),
-        }: Reference {
-            from: Identifier {
-                name: "b",
-                text_range: [43; 44),
-            },
-            to: Definition {
-                id: 16,
-                name: "b",
-                text_range: [0; 1),
-            },
+    },
+    Id {
+        idx: 1,
+    }: Reference {
+        from: Id {
+            idx: 1,
         },
-        Identifier {
-            name: "c",
-            text_range: [64; 65),
-        }: Reference {
-            from: Identifier {
-                name: "c",
-                text_range: [64; 65),
-            },
-            to: Definition {
-                id: 18,
-                name: "c",
-                text_range: [64; 65),
-            },
+        to: Id {
+            idx: 17,
         },
-        Identifier {
-            name: "a",
-            text_range: [70; 71),
-        }: Reference {
-            from: Identifier {
-                name: "a",
-                text_range: [70; 71),
-            },
-            to: Definition {
-                id: 17,
-                name: "a",
-                text_range: [21; 22),
-            },
+    },
+    Id {
+        idx: 2,
+    }: Reference {
+        from: Id {
+            idx: 2,
+        },
+        to: Id {
+            idx: 16,
+        },
+    },
+    Id {
+        idx: 3,
+    }: Reference {
+        from: Id {
+            idx: 3,
+        },
+        to: Id {
+            idx: 18,
+        },
+    },
+    Id {
+        idx: 4,
+    }: Reference {
+        from: Id {
+            idx: 4,
+        },
+        to: Id {
+            idx: 17,
         },
     },
 }

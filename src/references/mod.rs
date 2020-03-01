@@ -1,4 +1,5 @@
-use crate::{Definition, InverseScopeTree};
+use crate::{DefinitionId, Scopes};
+use id_arena::{Arena, Id as ArenaId};
 use rnix::types::{
     AttrSet, BinOp, BinOpKind, Ident, Inherit, Key, KeyValue, TokenWrapper, TypedNode,
 };
@@ -6,8 +7,11 @@ use rnix::{SyntaxKind, TextRange, AST};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
+type IdentifierId = ArenaId<Identifier>;
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Identifier {
+    pub id: IdentifierId,
     pub name: String,
     pub text_range: TextRange,
 }
@@ -24,7 +28,9 @@ impl PartialOrd for Identifier {
     }
 }
 
-fn collect_identifiers(ast: &AST) -> impl Iterator<Item = Identifier> {
+fn collect_identifiers(ast: &AST) -> Arena<Identifier> {
+    let mut arena = Arena::new();
+
     ast.node()
         .descendants()
         .filter_map(Ident::cast)
@@ -80,10 +86,15 @@ fn collect_identifiers(ast: &AST) -> impl Iterator<Item = Identifier> {
                 true
             }
         })
-        .map(|ident| Identifier {
-            name: ident.as_str().to_owned(),
-            text_range: ident.node().text_range(),
-        })
+        .for_each(|ident| {
+            arena.alloc_with_id(|id| Identifier {
+                id,
+                name: ident.as_str().to_owned(),
+                text_range: ident.node().text_range(),
+            });
+        });
+
+    arena
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -93,57 +104,59 @@ pub enum ReferenceError {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Reference {
-    from: Identifier,
-    to: Definition,
+    from: IdentifierId,
+    to: DefinitionId,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct References {
-    identifiers: Vec<Identifier>,
-    references: BTreeMap<Identifier, Reference>,
+    identifier_arena: Arena<Identifier>,
+    pub references: BTreeMap<IdentifierId, Reference>,
 }
 
 impl References {
-    pub fn from_ast_and_scope_tree(
-        ast: &AST,
-        scope_tree: &InverseScopeTree,
-    ) -> (Self, Vec<ReferenceError>) {
-        let identifiers: Vec<_> = collect_identifiers(ast).collect();
+    pub fn from_ast_and_scope_tree(ast: &AST, scopes: &Scopes) -> (Self, Vec<ReferenceError>) {
+        let identifier_arena = collect_identifiers(ast);
         let mut errors = vec![];
         let mut references = BTreeMap::new();
 
-        for identifier in identifiers.iter() {
-            let scopes: Vec<_> = scope_tree
-                .get_scopes(identifier.text_range)
+        for identifier in identifier_arena.iter() {
+            let scopes: Vec<_> = scopes
+                .get_scopes(identifier.1.text_range)
                 .into_iter()
                 .flatten()
                 .collect();
             let definition = scopes
                 .iter()
-                .filter_map(|scope| scope.get_definition(&identifier.name))
+                .filter_map(|scope| scope.get_definition(&identifier.1.name))
                 .next();
             let non_exhaustive = scopes.iter().any(|scope| !scope.is_exhaustive());
 
             if let Some(definition) = definition {
                 references.insert(
-                    identifier.clone(),
+                    identifier.0,
                     Reference {
-                        from: identifier.clone(),
+                        from: identifier.0,
                         to: definition,
                     },
                 );
             } else if !non_exhaustive {
-                errors.push(ReferenceError::NotFoundInScope(identifier.clone()));
+                errors.push(ReferenceError::NotFoundInScope(identifier.1.clone()));
             }
         }
 
         (
             References {
-                identifiers,
+                identifier_arena,
                 references,
             },
             errors,
         )
+    }
+
+    /// Returns the applicable scopes for a given text range
+    pub fn get_identifiers(&self) -> Vec<&Identifier> {
+        self.identifier_arena.iter().map(|(_id, val)| val).collect()
     }
 }
 
@@ -152,7 +165,7 @@ mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
     use crate::{AnalysisError, AnalysisOptions, AnalysisResult};
-    use insta::assert_debug_snapshot;
+    use insta::{assert_debug_snapshot, assert_display_snapshot};
     use std::process::Command;
     use std::str;
 
@@ -237,11 +250,14 @@ mod tests {
         let result = AnalysisResult::from(&parse_result, &analysis_options);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
-        let scopes: Vec<_> = result.scopes().cloned().collect();
-        let scope_tree = InverseScopeTree::from_scopes(scopes.as_slice());
-        let references = References::from_ast_and_scope_tree(&parse_result, &scope_tree);
+        let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
         assert_eq!(references.1, vec![]);
-        assert_debug_snapshot!(references.0);
+        assert_display_snapshot!(format!(
+            "{}\n=========\n{:#?}\n=========\n{:#?}",
+            nix_code,
+            references.0.get_identifiers(),
+            references.0.references
+        ));
     }
 
     fn assert_refences_error_snapshot(nix_code: &str) {
@@ -256,9 +272,7 @@ mod tests {
         assert_eq!(parse_result.errors(), vec![]);
         let analysis_options = AnalysisOptions {};
         let result = AnalysisResult::from(&parse_result, &analysis_options);
-        let scopes: Vec<_> = result.scopes().cloned().collect();
-        let scope_tree = InverseScopeTree::from_scopes(scopes.as_slice());
-        let references = References::from_ast_and_scope_tree(&parse_result, &scope_tree);
+        let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
         assert_debug_snapshot!(references.1);
     }
 }

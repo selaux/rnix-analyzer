@@ -1,46 +1,45 @@
 ---
 source: src/references/mod.rs
-expression: references.0
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, references . 0 .\n        get_identifiers (), references . 0 . references)"
 ---
-References {
-    identifiers: [
-        Identifier {
-            name: "a",
-            text_range: [1; 2),
+{a,...}: a
+=========
+[
+    Identifier {
+        id: Id {
+            idx: 0,
         },
-        Identifier {
-            name: "a",
-            text_range: [9; 10),
+        name: "a",
+        text_range: [1; 2),
+    },
+    Identifier {
+        id: Id {
+            idx: 1,
         },
-    ],
-    references: {
-        Identifier {
-            name: "a",
-            text_range: [1; 2),
-        }: Reference {
-            from: Identifier {
-                name: "a",
-                text_range: [1; 2),
-            },
-            to: Definition {
-                id: 16,
-                name: "a",
-                text_range: [1; 2),
-            },
+        name: "a",
+        text_range: [9; 10),
+    },
+]
+=========
+{
+    Id {
+        idx: 0,
+    }: Reference {
+        from: Id {
+            idx: 0,
         },
-        Identifier {
-            name: "a",
-            text_range: [9; 10),
-        }: Reference {
-            from: Identifier {
-                name: "a",
-                text_range: [9; 10),
-            },
-            to: Definition {
-                id: 16,
-                name: "a",
-                text_range: [1; 2),
-            },
+        to: Id {
+            idx: 16,
+        },
+    },
+    Id {
+        idx: 1,
+    }: Reference {
+        from: Id {
+            idx: 1,
+        },
+        to: Id {
+            idx: 16,
         },
     },
 }

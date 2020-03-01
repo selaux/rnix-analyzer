@@ -1,97 +1,213 @@
 ---
 source: src/scope/mod.rs
-expression: scopes
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code,\n        definitions, scopes, result . inverse_scope_tree ())"
 ---
+with builtins; 1
+=========
+[
+    Definition {
+        id: Id {
+            idx: 0,
+        },
+        name: "true",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 1,
+        },
+        name: "false",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 2,
+        },
+        name: "null",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 3,
+        },
+        name: "throw",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 4,
+        },
+        name: "abort",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 5,
+        },
+        name: "baseNameOf",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 6,
+        },
+        name: "builtins",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 7,
+        },
+        name: "derivation",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 8,
+        },
+        name: "dirOf",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 9,
+        },
+        name: "fetchTarball",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 10,
+        },
+        name: "import",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 11,
+        },
+        name: "isNull",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 12,
+        },
+        name: "map",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 13,
+        },
+        name: "placeholder",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 14,
+        },
+        name: "removeAttrs",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 15,
+        },
+        name: "toString",
+        text_range: [0; 0),
+    },
+]
+=========
 [
     Scope {
-        kind: With,
-        defines: {},
-        text_range: [0; 16),
-    },
-    Scope {
+        id: Id {
+            idx: 0,
+        },
         kind: Root,
         defines: {
-            "abort": Definition {
-                id: 4,
-                name: "abort",
-                text_range: [0; 0),
+            "abort": Id {
+                idx: 4,
             },
-            "baseNameOf": Definition {
-                id: 5,
-                name: "baseNameOf",
-                text_range: [0; 0),
+            "baseNameOf": Id {
+                idx: 5,
             },
-            "builtins": Definition {
-                id: 6,
-                name: "builtins",
-                text_range: [0; 0),
+            "builtins": Id {
+                idx: 6,
             },
-            "derivation": Definition {
-                id: 7,
-                name: "derivation",
-                text_range: [0; 0),
+            "derivation": Id {
+                idx: 7,
             },
-            "dirOf": Definition {
-                id: 8,
-                name: "dirOf",
-                text_range: [0; 0),
+            "dirOf": Id {
+                idx: 8,
             },
-            "false": Definition {
-                id: 1,
-                name: "false",
-                text_range: [0; 0),
+            "false": Id {
+                idx: 1,
             },
-            "fetchTarball": Definition {
-                id: 9,
-                name: "fetchTarball",
-                text_range: [0; 0),
+            "fetchTarball": Id {
+                idx: 9,
             },
-            "import": Definition {
-                id: 10,
-                name: "import",
-                text_range: [0; 0),
+            "import": Id {
+                idx: 10,
             },
-            "isNull": Definition {
-                id: 11,
-                name: "isNull",
-                text_range: [0; 0),
+            "isNull": Id {
+                idx: 11,
             },
-            "map": Definition {
-                id: 12,
-                name: "map",
-                text_range: [0; 0),
+            "map": Id {
+                idx: 12,
             },
-            "null": Definition {
-                id: 2,
-                name: "null",
-                text_range: [0; 0),
+            "null": Id {
+                idx: 2,
             },
-            "placeholder": Definition {
-                id: 13,
-                name: "placeholder",
-                text_range: [0; 0),
+            "placeholder": Id {
+                idx: 13,
             },
-            "removeAttrs": Definition {
-                id: 14,
-                name: "removeAttrs",
-                text_range: [0; 0),
+            "removeAttrs": Id {
+                idx: 14,
             },
-            "throw": Definition {
-                id: 3,
-                name: "throw",
-                text_range: [0; 0),
+            "throw": Id {
+                idx: 3,
             },
-            "toString": Definition {
-                id: 15,
-                name: "toString",
-                text_range: [0; 0),
+            "toString": Id {
+                idx: 15,
             },
-            "true": Definition {
-                id: 0,
-                name: "true",
-                text_range: [0; 0),
+            "true": Id {
+                idx: 0,
             },
         },
         text_range: [0; 16),
     },
+    Scope {
+        id: Id {
+            idx: 1,
+        },
+        kind: With,
+        defines: {},
+        text_range: [0; 16),
+    },
 ]
+=========
+InverseScopeTree {
+    leaf_scopes: [
+        ScopePath(
+            [
+                Id {
+                    idx: 0,
+                },
+                Id {
+                    idx: 1,
+                },
+            ],
+        ),
+        ScopePath(
+            [
+                Id {
+                    idx: 1,
+                },
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
+    ],
+}

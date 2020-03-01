@@ -235,6 +235,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "id-arena"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "insta"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -423,6 +428,7 @@ name = "rnix-analyzer"
 version = "0.1.0"
 dependencies = [
  "criterion 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "id-arena 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "insta 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rnix 0.7.2",
 ]
@@ -747,6 +753,7 @@ dependencies = [
 "checksum encode_unicode 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 "checksum heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
 "checksum hermit-abi 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "1010591b26bbfe835e9faeabeb11866061cc7dcebffd56ad7d0942d0e61aefd8"
+"checksum id-arena 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "25a2bc672d1148e28034f176e01fffebb08b35768468cc954630da77a1449005"
 "checksum insta 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8df742abee84dbf27d20869c9adf77b0d8f7ea3eead13c2c9e3998d136a97058"
 "checksum itertools 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
 "checksum itoa 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
