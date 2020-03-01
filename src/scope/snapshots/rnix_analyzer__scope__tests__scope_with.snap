@@ -1,0 +1,11 @@
+---
+source: src/scope/mod.rs
+expression: scopes.0
+---
+[
+    Scope {
+        kind: With,
+        defines: {},
+        text_range: [0; 16),
+    },
+]

@@ -1,0 +1,7 @@
+---
+source: src/scope/mod.rs
+expression: scope_tree
+---
+InverseScopeTree {
+    leaf_scopes: [],
+}

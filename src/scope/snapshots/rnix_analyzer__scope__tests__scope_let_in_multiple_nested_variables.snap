@@ -1,0 +1,17 @@
+---
+source: src/scope/mod.rs
+expression: scopes.0
+---
+[
+    Scope {
+        kind: LetIn,
+        defines: {
+            "a": Definition {
+                id: 0,
+                name: "a",
+                text_range: [4; 5),
+            },
+        },
+        text_range: [0; 30),
+    },
+]

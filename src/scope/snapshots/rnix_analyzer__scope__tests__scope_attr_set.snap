@@ -1,0 +1,59 @@
+---
+source: src/scope/mod.rs
+expression: scopes.0
+---
+[
+    Scope {
+        kind: Lambda,
+        defines: {
+            "a": Definition {
+                id: 0,
+                name: "a",
+                text_range: [0; 1),
+            },
+        },
+        text_range: [0; 124),
+    },
+    Scope {
+        kind: Lambda,
+        defines: {
+            "d": Definition {
+                id: 1,
+                name: "d",
+                text_range: [3; 4),
+            },
+        },
+        text_range: [3; 124),
+    },
+    Scope {
+        kind: AttrSet,
+        defines: {
+            "a": Definition {
+                id: 2,
+                name: "a",
+                text_range: [20; 21),
+            },
+            "b": Definition {
+                id: 3,
+                name: "b",
+                text_range: [39; 40),
+            },
+            "c": Definition {
+                id: 4,
+                name: "c",
+                text_range: [58; 59),
+            },
+            "d": Definition {
+                id: 5,
+                name: "d",
+                text_range: [85; 86),
+            },
+            "e": Definition {
+                id: 6,
+                name: "e",
+                text_range: [112; 113),
+            },
+        },
+        text_range: [6; 124),
+    },
+]

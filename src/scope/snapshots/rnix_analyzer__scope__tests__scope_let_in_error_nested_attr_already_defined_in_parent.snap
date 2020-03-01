@@ -1,0 +1,12 @@
+---
+source: src/scope/mod.rs
+expression: scopes.1
+---
+[
+    AlreadyDefined(
+        LetIn,
+        "a.b",
+        [20; 23),
+        [10; 11),
+    ),
+]

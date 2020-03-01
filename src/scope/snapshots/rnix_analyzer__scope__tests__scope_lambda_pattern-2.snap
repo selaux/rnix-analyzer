@@ -1,0 +1,26 @@
+---
+source: src/scope/mod.rs
+expression: scope_tree
+---
+InverseScopeTree {
+    leaf_scopes: [
+        [
+            Scope {
+                kind: Lambda,
+                defines: {
+                    "a": Definition {
+                        id: 0,
+                        name: "a",
+                        text_range: [1; 2),
+                    },
+                    "b": Definition {
+                        id: 1,
+                        name: "b",
+                        text_range: [4; 5),
+                    },
+                },
+                text_range: [0; 13),
+            },
+        ],
+    ],
+}

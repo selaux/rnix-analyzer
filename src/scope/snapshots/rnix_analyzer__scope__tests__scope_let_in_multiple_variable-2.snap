@@ -1,0 +1,26 @@
+---
+source: src/scope/mod.rs
+expression: scope_tree
+---
+InverseScopeTree {
+    leaf_scopes: [
+        [
+            Scope {
+                kind: LetIn,
+                defines: {
+                    "a": Definition {
+                        id: 0,
+                        name: "a",
+                        text_range: [4; 5),
+                    },
+                    "b": Definition {
+                        id: 1,
+                        name: "b",
+                        text_range: [11; 12),
+                    },
+                },
+                text_range: [0; 26),
+            },
+        ],
+    ],
+}

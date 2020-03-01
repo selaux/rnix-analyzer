@@ -1,0 +1,12 @@
+---
+source: src/scope/mod.rs
+expression: scopes.1
+---
+[
+    AlreadyDefined(
+        RecursiveAttrSet,
+        "b",
+        [56; 57),
+        [37; 38),
+    ),
+]

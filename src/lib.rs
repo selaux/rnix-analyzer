@@ -1,12 +1,13 @@
 use rnix::AST;
 
+mod references;
 mod scope;
 
 /// Options used for code analysis
 #[derive(Debug, PartialEq, Clone)]
 pub struct AnalysisOptions {}
 
-pub use scope::{Definition, Scope, ScopeAnalysisError, ScopeKind};
+pub use scope::{Definition, InverseScopeTree, Scope, ScopeAnalysisError, ScopeKind};
 
 /// Error that occured during code analysis
 #[derive(Debug, PartialEq, Clone)]

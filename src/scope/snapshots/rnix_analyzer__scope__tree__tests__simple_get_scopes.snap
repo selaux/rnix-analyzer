@@ -1,0 +1,17 @@
+---
+source: src/scope/tree.rs
+expression: scopes
+---
+[
+    Scope {
+        kind: Lambda,
+        defines: {
+            "a": Definition {
+                id: 0,
+                name: "a",
+                text_range: [0; 1),
+            },
+        },
+        text_range: [0; 4),
+    },
+]

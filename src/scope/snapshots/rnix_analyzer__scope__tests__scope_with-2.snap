@@ -1,0 +1,15 @@
+---
+source: src/scope/mod.rs
+expression: scope_tree
+---
+InverseScopeTree {
+    leaf_scopes: [
+        [
+            Scope {
+                kind: With,
+                defines: {},
+                text_range: [0; 16),
+            },
+        ],
+    ],
+}

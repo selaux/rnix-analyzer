@@ -1,0 +1,12 @@
+---
+source: src/scope/mod.rs
+expression: scopes.1
+---
+[
+    AlreadyDefined(
+        Lambda,
+        "a",
+        [4; 5),
+        [1; 2),
+    ),
+]
