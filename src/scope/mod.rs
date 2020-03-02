@@ -258,7 +258,7 @@ impl DefinesScope for Lambda {
                         )
                     }
                 }
-                if let Some(ident) = pattern.bind() {
+                if let Some(ident) = pattern.at() {
                     insert_into_defines(
                         ScopeKind::Lambda,
                         &mut defines,

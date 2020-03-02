@@ -1,11 +1,8 @@
 use crate::{DefinitionId, Scopes};
 use id_arena::{Arena, Id as ArenaId};
-use rnix::types::{
-    AttrSet, BinOp, BinOpKind, Ident, Inherit, Key, KeyValue, TokenWrapper, TypedNode,
-};
-use rnix::{SyntaxKind, TextRange, AST};
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use rnix::types::{AttrSet, BinOp, Ident, Inherit, TokenWrapper, TypedNode};
+use rnix::{SyntaxKind, SyntaxNode, TextRange, WalkEvent, AST};
+use std::collections::{BTreeMap, VecDeque};
 
 type IdentifierId = ArenaId<Identifier>;
 
@@ -16,83 +13,99 @@ pub struct Identifier {
     pub text_range: TextRange,
 }
 
-impl Ord for Identifier {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.text_range.start().cmp(&other.text_range.start())
-    }
-}
-
-impl PartialOrd for Identifier {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.text_range.start().cmp(&other.text_range.start()))
-    }
-}
-
 fn collect_identifiers(ast: &AST) -> Arena<Identifier> {
     let mut arena = Arena::new();
+    let mut current_attrset_recursive: VecDeque<bool> = VecDeque::new();
+    let mut parents: VecDeque<SyntaxNode> = VecDeque::new();
 
-    ast.node()
-        .descendants()
-        .filter_map(Ident::cast)
-        .filter(|ident| {
-            // Filter nested identifiers
-            let previous_kind = ident.node().prev_sibling_or_token().map(|prev| prev.kind());
-            previous_kind == None || previous_kind != Some(SyntaxKind::TOKEN_DOT)
-        })
-        .filter(|ident| {
-            // Filter identifiers in non recursive objects
-            let parent = ident
-                .node()
-                .parent()
-                .and_then(Key::cast)
-                .and_then(|parent| parent.node().parent())
-                .and_then(KeyValue::cast)
-                .and_then(|parent| parent.node().parent())
-                .and_then(AttrSet::cast);
-            if let Some(attrset) = parent {
-                attrset.recursive()
-            } else {
-                true
+    for walk_event in ast.node().preorder() {
+        match walk_event {
+            WalkEvent::Enter(node) => {
+                parents.push_front(node.clone());
+                if node.kind() == SyntaxKind::NODE_ATTR_SET {
+                    let recursive = AttrSet::cast(node)
+                        .map(|attrset| attrset.recursive())
+                        .unwrap_or(false);
+                    current_attrset_recursive.push_front(recursive);
+                    continue;
+                }
+                if node.kind() == SyntaxKind::NODE_IDENT {
+                    let last_four_parents: Vec<_> = (1..4).map(|v| parents.get(v)).collect();
+                    let last_four_kinds: Vec<_> = last_four_parents
+                        .iter()
+                        .map(|n| n.map(|n| n.kind()))
+                        .collect();
+
+                    // Filter identifiers in select paths (except first one)
+                    if (last_four_kinds[0] == Some(SyntaxKind::NODE_SELECT)
+                        || last_four_kinds[0] == Some(SyntaxKind::NODE_KEY))
+                        && node.prev_sibling_or_token().map(|prev| prev.kind())
+                            == Some(SyntaxKind::TOKEN_DOT)
+                    {
+                        continue;
+                    }
+                    // Filter identifiers in normal attrset paths
+                    if last_four_kinds[0] == Some(SyntaxKind::NODE_KEY)
+                        && last_four_kinds[1] == Some(SyntaxKind::NODE_KEY_VALUE)
+                        && last_four_kinds[2] == Some(SyntaxKind::NODE_ATTR_SET)
+                        && !current_attrset_recursive[0]
+                    {
+                        continue;
+                    }
+                    // Filter identifiers in from clause of inherit
+                    if last_four_kinds[0] == Some(SyntaxKind::NODE_INHERIT) {
+                        let parent = last_four_parents[0]
+                            .cloned()
+                            .and_then(Inherit::cast)
+                            .and_then(|inherit| inherit.from());
+                        if parent.is_some() {
+                            continue;
+                        }
+                    }
+                    // Filter identifiers in object contains binary operator
+                    if last_four_kinds[0] == Some(SyntaxKind::NODE_BIN_OP) {
+                        let parent = last_four_parents[0].cloned().and_then(BinOp::cast);
+                        if let Some(parent) = parent {
+                            let im_right = parent
+                                .rhs()
+                                .map(|n| node.text_range().is_subrange(&n.text_range()))
+                                .unwrap_or(false);
+                            if im_right {
+                                continue;
+                            }
+                        }
+                    }
+                    if last_four_kinds[0] == Some(SyntaxKind::NODE_SELECT)
+                        && last_four_kinds[1] == Some(SyntaxKind::NODE_BIN_OP)
+                    {
+                        let parent = last_four_parents[1].cloned().and_then(BinOp::cast);
+                        if let Some(parent) = parent {
+                            let im_right = parent
+                                .rhs()
+                                .map(|n| node.text_range().is_subrange(&n.text_range()))
+                                .unwrap_or(false);
+                            if im_right {
+                                continue;
+                            }
+                        }
+                    }
+                }
+                if let Some(ident) = Ident::cast(node.clone()) {
+                    arena.alloc_with_id(|id| Identifier {
+                        id,
+                        name: ident.as_str().to_owned(),
+                        text_range: ident.node().text_range(),
+                    });
+                }
             }
-        })
-        .filter(|ident| {
-            // Filter identifiers that are inherit from
-            let parent = ident
-                .node()
-                .parent()
-                .and_then(Inherit::cast)
-                .and_then(|inherit| inherit.from());
-            parent.is_none()
-        })
-        .filter(|ident| {
-            // Filter identifiers in object contains
-            let binop = ident
-                .node()
-                .parent()
-                .and_then(|node| match node.kind() {
-                    SyntaxKind::NODE_BIN_OP => Some(node),
-                    SyntaxKind::NODE_SELECT => node.parent(),
-                    _ => None,
-                })
-                .and_then(BinOp::cast);
-            if let Some(binop) = binop {
-                let im_right = binop
-                    .rhs()
-                    .map(|node| node.text_range().start() == ident.node().text_range().start())
-                    .unwrap_or(false);
-                let kind = binop.operator();
-                kind != BinOpKind::IsSet || !im_right
-            } else {
-                true
+            WalkEvent::Leave(node) => {
+                if node.kind() == SyntaxKind::NODE_ATTR_SET {
+                    current_attrset_recursive.pop_front();
+                }
+                parents.pop_front();
             }
-        })
-        .for_each(|ident| {
-            arena.alloc_with_id(|id| Identifier {
-                id,
-                name: ident.as_str().to_owned(),
-                text_range: ident.node().text_range(),
-            });
-        });
+        }
+    }
 
     arena
 }
