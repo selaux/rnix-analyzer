@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use rnix_analyzer::{AnalysisOptions, AnalysisResult};
 use std::env;
 use std::fs;
@@ -33,9 +34,9 @@ pub fn main() {
         process::exit(1);
     }
 
-    for file_name in file_names {
+    file_names.par_iter().for_each(|file_name| {
         if let Err(e) = analyze(&file_name) {
             eprintln!("{}", e);
         }
-    }
+    });
 }

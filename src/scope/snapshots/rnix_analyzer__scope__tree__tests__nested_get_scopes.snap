@@ -29,6 +29,18 @@ expression: scopes
     },
     Scope {
         id: Id {
+            idx: 1,
+        },
+        kind: Lambda,
+        defines: {
+            "a": Id {
+                idx: 16,
+            },
+        },
+        text_range: [0; 16),
+    },
+    Scope {
+        id: Id {
             idx: 0,
         },
         kind: Root,
@@ -80,18 +92,6 @@ expression: scopes
             },
             "true": Id {
                 idx: 0,
-            },
-        },
-        text_range: [0; 16),
-    },
-    Scope {
-        id: Id {
-            idx: 1,
-        },
-        kind: Lambda,
-        defines: {
-            "a": Id {
-                idx: 16,
             },
         },
         text_range: [0; 16),

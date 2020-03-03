@@ -293,10 +293,10 @@ InverseScopeTree {
                     idx: 2,
                 },
                 Id {
-                    idx: 0,
+                    idx: 1,
                 },
                 Id {
-                    idx: 1,
+                    idx: 0,
                 },
             ],
         ),
@@ -306,20 +306,10 @@ InverseScopeTree {
                     idx: 2,
                 },
                 Id {
-                    idx: 0,
-                },
-                Id {
                     idx: 1,
                 },
-            ],
-        ),
-        ScopePath(
-            [
                 Id {
                     idx: 0,
-                },
-                Id {
-                    idx: 1,
                 },
             ],
         ),
@@ -328,6 +318,13 @@ InverseScopeTree {
                 Id {
                     idx: 1,
                 },
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
+        ScopePath(
+            [
                 Id {
                     idx: 0,
                 },

@@ -1,7 +1,7 @@
 use rnix::{TextRange, AST};
 
-mod references;
-mod scope;
+pub mod references;
+pub mod scope;
 
 /// Options used for code analysis
 #[derive(Debug, PartialEq, Clone)]

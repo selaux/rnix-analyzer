@@ -3,7 +3,7 @@ use rnix::{
     types::{
         AttrSet, EntryHolder, Ident, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With,
     },
-    SyntaxNode, TextRange, TextUnit,
+    SyntaxKind, TextRange, TextUnit,
 };
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
@@ -140,7 +140,6 @@ trait DefinesScope {
         &self,
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
-        node: &SyntaxNode,
         errors: &mut Vec<ScopeAnalysisError>,
     );
 }
@@ -150,14 +149,13 @@ impl DefinesScope for With {
         &self,
         _definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
-        node: &SyntaxNode,
         _errors: &mut Vec<ScopeAnalysisError>,
     ) {
         scope_arena.alloc_with_id(|id| Scope {
             id,
             kind: ScopeKind::With,
             defines: BTreeMap::new(),
-            text_range: node.text_range(),
+            text_range: self.node().text_range(),
         });
     }
 }
@@ -167,7 +165,6 @@ impl DefinesScope for LetIn {
         &self,
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
-        node: &SyntaxNode,
         errors: &mut Vec<ScopeAnalysisError>,
     ) {
         let mut defines = BTreeMap::new();
@@ -194,7 +191,7 @@ impl DefinesScope for LetIn {
             id,
             kind: ScopeKind::LetIn,
             defines,
-            text_range: node.text_range(),
+            text_range: self.node().text_range(),
         });
     }
 }
@@ -204,7 +201,6 @@ impl DefinesScope for AttrSet {
         &self,
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
-        node: &SyntaxNode,
         errors: &mut Vec<ScopeAnalysisError>,
     ) {
         let mut defines = BTreeMap::new();
@@ -229,7 +225,7 @@ impl DefinesScope for AttrSet {
             id,
             kind: scope_kind,
             defines,
-            text_range: node.text_range(),
+            text_range: self.node().text_range(),
         });
     }
 }
@@ -239,7 +235,6 @@ impl DefinesScope for Lambda {
         &self,
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
-        node: &SyntaxNode,
         errors: &mut Vec<ScopeAnalysisError>,
     ) {
         let mut defines = BTreeMap::new();
@@ -281,7 +276,7 @@ impl DefinesScope for Lambda {
             id,
             kind: ScopeKind::Lambda,
             defines,
-            text_range: node.text_range(),
+            text_range: self.node().text_range(),
         });
     }
 }
@@ -448,6 +443,13 @@ fn populate_from_entries<T>(
     }
 }
 
+pub fn defines_scope(kind: SyntaxKind) -> bool {
+    kind == SyntaxKind::NODE_ATTR_SET
+        || kind == SyntaxKind::NODE_LAMBDA
+        || kind == SyntaxKind::NODE_LET_IN
+        || kind == SyntaxKind::NODE_WITH
+}
+
 /// Collect scopes from the AST, returns scopes and errors encountered during scope analysis
 pub fn collect_scopes(ast: &rnix::AST) -> (Scopes, Vec<ScopeAnalysisError>) {
     let mut errors_global = vec![];
@@ -462,40 +464,22 @@ pub fn collect_scopes(ast: &rnix::AST) -> (Scopes, Vec<ScopeAnalysisError>) {
     });
 
     for node in ast.node().descendants() {
-        match ParsedType::try_from(node.clone()) {
-            Ok(ParsedType::With(with)) => {
-                with.get_scope(
-                    &mut definition_arena,
-                    &mut scope_arena,
-                    &node,
-                    &mut errors_global,
-                );
+        if defines_scope(node.kind()) {
+            match ParsedType::try_from(node) {
+                Ok(ParsedType::With(with)) => {
+                    with.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
+                }
+                Ok(ParsedType::LetIn(let_in)) => {
+                    let_in.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
+                }
+                Ok(ParsedType::AttrSet(attrset)) => {
+                    attrset.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
+                }
+                Ok(ParsedType::Lambda(lambda)) => {
+                    lambda.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
+                }
+                _ => {}
             }
-            Ok(ParsedType::LetIn(let_in)) => {
-                let_in.get_scope(
-                    &mut definition_arena,
-                    &mut scope_arena,
-                    &node,
-                    &mut errors_global,
-                );
-            }
-            Ok(ParsedType::AttrSet(attrset)) => {
-                attrset.get_scope(
-                    &mut definition_arena,
-                    &mut scope_arena,
-                    &node,
-                    &mut errors_global,
-                );
-            }
-            Ok(ParsedType::Lambda(lambda)) => {
-                lambda.get_scope(
-                    &mut definition_arena,
-                    &mut scope_arena,
-                    &node,
-                    &mut errors_global,
-                );
-            }
-            _ => {}
         }
     }
     let scope_tree = InverseScopeTree::from_scopes(&scope_arena);

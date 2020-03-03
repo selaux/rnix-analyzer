@@ -1,5 +1,6 @@
-use crate::{Scope, ScopeId};
+use crate::{Scope, ScopeId, ScopeKind};
 use id_arena::Arena;
+use std::cmp::Ordering;
 
 /// InverseScopeTree refers to single instance of a path in the scope tree.
 #[derive(Debug, PartialEq, Clone)]
@@ -17,11 +18,19 @@ impl InverseScopeTree {
     pub fn from_scopes(scope_arena: &Arena<Scope>) -> InverseScopeTree {
         let mut leaf_scopes = vec![];
         let mut scopes: Vec<_> = scope_arena.iter().map(|(_id, val)| val).collect();
-        scopes.sort_by(|s1, s2| s1.text_range.len().cmp(&s2.text_range.len()));
-        for scope in scopes.iter() {
+        scopes.sort_by(|s1, s2| {
+            if s1.kind == ScopeKind::Root {
+                return Ordering::Greater;
+            }
+            if s2.kind == ScopeKind::Root {
+                return Ordering::Less;
+            }
+            s1.text_range.len().cmp(&s2.text_range.len())
+        });
+        for (idx, scope) in scopes.iter().enumerate() {
             let mut scope_path = vec![scope];
-            for other_scope in scopes.iter() {
-                if scope != other_scope && scope.text_range.is_subrange(&other_scope.text_range) {
+            for other_scope in scopes[idx + 1..].iter() {
+                if scope.text_range.is_subrange(&other_scope.text_range) {
                     scope_path.push(other_scope);
                 }
             }
