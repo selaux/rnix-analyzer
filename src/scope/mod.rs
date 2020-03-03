@@ -88,7 +88,7 @@ pub type ScopeId = ArenaId<Scope>;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
     id: ScopeId,
-    kind: ScopeKind,
+    pub kind: ScopeKind,
     defines: BTreeMap<String, DefinitionId>,
     pub text_range: TextRange,
 }
@@ -115,6 +115,7 @@ pub struct Scopes {
     pub definition_arena: Arena<Definition>,
     pub scope_arena: Arena<Scope>,
     pub scope_tree: InverseScopeTree,
+    pub root_scope: ScopeId,
 }
 
 impl Scopes {
@@ -125,6 +126,11 @@ impl Scopes {
             range.is_subrange(&self.scope_arena[*id].text_range)
         })?;
         Some(scope.0.iter().map(|id| &self.scope_arena[*id]).collect())
+    }
+
+    /// Returns the applicable scopes for a given text range
+    pub fn root_scope(&self) -> &Scope {
+        &self.scope_arena[self.root_scope]
     }
 }
 
@@ -448,7 +454,7 @@ pub fn collect_scopes(ast: &rnix::AST) -> (Scopes, Vec<ScopeAnalysisError>) {
     let mut definition_arena = Arena::new();
     let mut scope_arena = Arena::new();
     let root_defines = root_defines(&mut definition_arena);
-    scope_arena.alloc_with_id(|id| Scope {
+    let root_scope = scope_arena.alloc_with_id(|id| Scope {
         id,
         kind: ScopeKind::Root,
         defines: root_defines,
@@ -499,6 +505,7 @@ pub fn collect_scopes(ast: &rnix::AST) -> (Scopes, Vec<ScopeAnalysisError>) {
             definition_arena,
             scope_arena,
             scope_tree,
+            root_scope,
         },
         errors_global,
     )
