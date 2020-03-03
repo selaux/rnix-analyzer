@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Benchmark, Criterion, Throughput};
 use rnix::parse;
-use rnix_analyzer::{references, scope, AnalysisOptions, AnalysisResult};
+use rnix_analyzer::{references, scope, AnalysisResult};
 
 fn all_packages(c: &mut Criterion) {
     let input = include_str!("all-packages.nix");
@@ -24,11 +24,10 @@ fn all_packages(c: &mut Criterion) {
         .sample_size(10),
     );
     let parsed = parse(input);
-    let options = AnalysisOptions {};
     c.bench(
         "all-packages full",
         Benchmark::new("all-packages full", move |b| {
-            b.iter(|| AnalysisResult::from(&parsed, &options))
+            b.iter(|| AnalysisResult::from(&parsed))
         })
         .throughput(Throughput::Bytes(input.len() as u64))
         .sample_size(10),

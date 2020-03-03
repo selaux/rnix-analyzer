@@ -3,10 +3,6 @@ use rnix::{TextRange, AST};
 pub mod references;
 pub mod scope;
 
-/// Options used for code analysis
-#[derive(Debug, PartialEq, Clone)]
-pub struct AnalysisOptions {}
-
 pub use references::{Identifier, Reference, ReferenceError, References};
 pub use scope::{
     Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
@@ -44,7 +40,7 @@ pub struct AnalysisResult {
 
 impl AnalysisResult {
     /// Analyze the code within `ast` and return the resulting `AnalysisResult`
-    pub fn from(ast: &AST, _options: &AnalysisOptions) -> Self {
+    pub fn from(ast: &AST) -> Self {
         let (scopes, scope_errors) = scope::collect_scopes(&ast);
         let (references, reference_errors) = References::from_ast_and_scope_tree(ast, &scopes);
         let errors: Vec<_> = scope_errors

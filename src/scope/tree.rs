@@ -43,7 +43,7 @@ impl InverseScopeTree {
 
 #[cfg(test)]
 mod tests {
-    use crate::{AnalysisError, AnalysisOptions, AnalysisResult};
+    use crate::{AnalysisError, AnalysisResult};
     use insta::assert_debug_snapshot;
     use rnix::{TextRange, TextUnit};
     use std::process::Command;
@@ -75,8 +75,7 @@ mod tests {
         assert_eq!(output.status.code(), Some(0));
         let parse_result = rnix::parse(nix_code);
         assert_eq!(parse_result.errors(), vec![]);
-        let analysis_options = AnalysisOptions {};
-        let result = AnalysisResult::from(&parse_result, &analysis_options);
+        let result = AnalysisResult::from(&parse_result);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
         let scopes: Vec<_> = result.get_scopes(range).expect("should return a scope");

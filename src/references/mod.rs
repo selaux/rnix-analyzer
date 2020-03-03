@@ -201,7 +201,7 @@ impl References {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::{AnalysisError, AnalysisOptions, AnalysisResult};
+    use crate::{AnalysisError, AnalysisResult};
     use insta::{assert_debug_snapshot, assert_display_snapshot};
     use std::process::Command;
     use std::str;
@@ -283,8 +283,7 @@ mod tests {
         assert_eq!(output.status.code(), Some(0));
         let parse_result = rnix::parse(nix_code);
         assert_eq!(parse_result.errors(), vec![]);
-        let analysis_options = AnalysisOptions {};
-        let result = AnalysisResult::from(&parse_result, &analysis_options);
+        let result = AnalysisResult::from(&parse_result);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
         let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
@@ -307,8 +306,7 @@ mod tests {
         assert_eq!(output.status.code(), Some(1));
         let parse_result = rnix::parse(nix_code);
         assert_eq!(parse_result.errors(), vec![]);
-        let analysis_options = AnalysisOptions {};
-        let result = AnalysisResult::from(&parse_result, &analysis_options);
+        let result = AnalysisResult::from(&parse_result);
         let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
         assert_debug_snapshot!(references.1);
     }
