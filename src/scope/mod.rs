@@ -17,9 +17,12 @@ pub type DefinitionId = ArenaId<Definition>;
 /// A definition of a variable inside a Scope
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Definition {
-    id: DefinitionId,
-    name: String,
-    text_range: TextRange,
+    // Unique id of the definition
+    pub id: DefinitionId,
+    // name
+    pub name: String,
+    // location of the definition
+    pub text_range: TextRange,
 }
 
 fn insert_root_definition(
@@ -62,11 +65,17 @@ pub fn root_defines(arena: &mut Arena<Definition>) -> BTreeMap<String, Definitio
 /// The kind of scope that is defined
 #[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub enum ScopeKind {
+    /// The root scope at the top of the file, defines builtins
     Root,
+    /// A scope defined with `with a;`
     With,
+    /// At scope defined with `let a = 1; in ...`
     LetIn,
+    /// A scope defined by `{ a = 1; }`
     AttrSet,
+    /// A scope defined by `rec { a = 1; }`
     RecursiveAttrSet,
+    /// A scope defined by `a: a`
     Lambda,
 }
 
@@ -87,19 +96,24 @@ pub type ScopeId = ArenaId<Scope>;
 /// It is a superset of lexical nix scopes that includes attribute set scopes that do not use `rec`.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
-    id: ScopeId,
+    pub id: ScopeId,
     pub kind: ScopeKind,
     defines: BTreeMap<String, DefinitionId>,
     pub text_range: TextRange,
 }
 
 impl Scope {
+    /// Get definitions in this scope
+    pub fn definitions(&self) -> impl Iterator<Item = &DefinitionId> {
+        let simple_attrset = self.kind == ScopeKind::AttrSet;
+        self.defines.values().filter(move |_| !simple_attrset)
+    }
     /// Get a definition by name in this scope (not including parent scopes).
-    pub fn get_definition(&self, name: &str) -> Option<DefinitionId> {
+    pub fn definition(&self, name: &str) -> Option<&DefinitionId> {
         if self.kind == ScopeKind::AttrSet {
             return None;
         }
-        self.defines.get(name).cloned()
+        self.defines.get(name)
     }
 
     /// Returns true if the scope is able to define all its definitions
@@ -112,25 +126,53 @@ impl Scope {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scopes {
-    pub definition_arena: Arena<Definition>,
-    pub scope_arena: Arena<Scope>,
-    pub scope_tree: InverseScopeTree,
-    pub root_scope: ScopeId,
+    definition_arena: Arena<Definition>,
+    scope_arena: Arena<Scope>,
+    scope_tree: InverseScopeTree,
+    root_scope: ScopeId,
 }
 
+/// Result of scope analysis
 impl Scopes {
-    /// Returns the applicable scopes for a given text range
-    pub fn get_scopes(&self, range: TextRange) -> Option<Vec<&Scope>> {
-        let scope = self.scope_tree.leaf_scopes.iter().find(|scopes| {
-            let id = scopes.0.first().expect("more than one node");
-            range.is_subrange(&self.scope_arena[*id].text_range)
-        })?;
-        Some(scope.0.iter().map(|id| &self.scope_arena[*id]).collect())
+    /// Returns a scope by id
+    pub fn scope(&self, id: ScopeId) -> Option<&Scope> {
+        self.scope_arena.get(id)
     }
 
-    /// Returns the applicable scopes for a given text range
+    /// Returns all scopes
+    pub fn scopes(&self) -> impl Iterator<Item = &Scope> {
+        self.scope_arena.iter().map(|v| v.1)
+    }
+
+    /// Returns all definitions
+    pub fn definitions(&self) -> impl Iterator<Item = &Definition> {
+        let definition_arena = &self.definition_arena;
+        self.scopes()
+            .flat_map(|v| v.definitions())
+            .flat_map(move |id| definition_arena.get(*id))
+    }
+
+    /// Returns the applicable scopes at a given text range
+    pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
+        let scope_arena = &self.scope_arena;
+        let leaf_scope = self.scope_tree.leaf_scopes.iter().find(|scopes| {
+            let id = scopes.0.first().expect("more than one node");
+            range.is_subrange(&self.scope_arena[*id].text_range)
+        });
+        leaf_scope
+            .into_iter()
+            .flat_map(|v| v.0.iter())
+            .flat_map(move |id| scope_arena.get(*id))
+    }
+
+    /// Returns the root scope
     pub fn root_scope(&self) -> &Scope {
         &self.scope_arena[self.root_scope]
+    }
+
+    // Returns inverse scope tree
+    pub fn inverse_scope_tree(&self) -> &InverseScopeTree {
+        &self.scope_tree
     }
 }
 
@@ -663,8 +705,10 @@ mod tests {
         let result = AnalysisResult::from(&parse_result);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
-        let scopes: Vec<_> = result.scopes().cloned().collect();
-        let definitions: Vec<_> = result.definitions().cloned().collect();
+        let mut scopes: Vec<_> = result.scopes().cloned().collect();
+        let mut definitions: Vec<_> = result.definitions().cloned().collect();
+        scopes.sort_by(|a, b| a.id.cmp(&b.id));
+        definitions.sort_by(|a, b| a.id.cmp(&b.id));
         assert_display_snapshot!(format!(
             "{}\n=========\n{:#?}\n=========\n{:#?}\n=========\n{:#?}",
             nix_code,

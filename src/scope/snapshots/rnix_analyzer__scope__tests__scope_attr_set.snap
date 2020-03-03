@@ -137,41 +137,6 @@ a: d: {
         name: "d",
         text_range: [3; 4),
     },
-    Definition {
-        id: Id {
-            idx: 18,
-        },
-        name: "a",
-        text_range: [20; 21),
-    },
-    Definition {
-        id: Id {
-            idx: 19,
-        },
-        name: "b",
-        text_range: [39; 40),
-    },
-    Definition {
-        id: Id {
-            idx: 20,
-        },
-        name: "c",
-        text_range: [58; 59),
-    },
-    Definition {
-        id: Id {
-            idx: 21,
-        },
-        name: "d",
-        text_range: [85; 86),
-    },
-    Definition {
-        id: Id {
-            idx: 22,
-        },
-        name: "e",
-        text_range: [112; 113),
-    },
 ]
 =========
 [

@@ -4,30 +4,37 @@ use rnix::types::{AttrSet, BinOp, Ident, Inherit, TokenWrapper, TypedNode};
 use rnix::{SyntaxKind, SyntaxNode, TextRange, WalkEvent, AST};
 use std::collections::{BTreeMap, VecDeque};
 
-type IdentifierId = ArenaId<Identifier>;
+type VariableId = ArenaId<Variable>;
 
+/// A variable occurence in code
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Identifier {
-    pub id: IdentifierId,
+pub struct Variable {
+    /// Unique id of the variable
+    pub id: VariableId,
+    /// defined name
     pub name: String,
+    /// location of the variable
     pub text_range: TextRange,
 }
 
+/// An error that occured during reference analysis
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ReferenceError {
     NotFoundInScope(String, TextRange),
 }
 
+/// A reference from a variable occurence to a definition
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Reference {
-    from: IdentifierId,
-    to: DefinitionId,
+    pub from: VariableId,
+    pub to: DefinitionId,
 }
 
+/// The result of reference analysis
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct References {
-    identifier_arena: Arena<Identifier>,
-    pub references: BTreeMap<IdentifierId, Reference>,
+    variable_arena: Arena<Variable>,
+    references: BTreeMap<VariableId, Reference>,
 }
 
 fn filter_identifier(
@@ -97,10 +104,11 @@ fn filter_identifier(
 }
 
 impl References {
+    /// Build analysis from ast and scope tree
     pub fn from_ast_and_scope_tree(ast: &AST, scopes: &Scopes) -> (Self, Vec<ReferenceError>) {
         let mut errors = vec![];
         let mut references = BTreeMap::new();
-        let mut identifier_arena = Arena::new();
+        let mut variable_arena = Arena::new();
         let mut current_attrset_recursive: VecDeque<bool> = VecDeque::new();
         let mut parents: VecDeque<SyntaxNode> = VecDeque::new();
         let mut in_scopes: VecDeque<&Scope> = VecDeque::new();
@@ -114,9 +122,7 @@ impl References {
                     parents.push_front(node.clone());
                     if defines_scope(kind) {
                         let scope = scopes
-                            .scope_arena
-                            .iter()
-                            .map(|v| v.1)
+                            .scopes()
                             .find(|scope| {
                                 scope.text_range == node.text_range()
                                     && scope.kind != ScopeKind::Root
@@ -136,21 +142,21 @@ impl References {
                             if !filter_identifier(&parents, &current_attrset_recursive, &node) {
                                 if let Some(ident) = Ident::cast(node) {
                                     let name = ident.as_str().to_owned();
-                                    let id = identifier_arena.alloc_with_id(|id| Identifier {
+                                    let id = variable_arena.alloc_with_id(|id| Variable {
                                         id,
                                         name: name.clone(),
                                         text_range: ident.node().text_range(),
                                     });
                                     let definition = in_scopes
                                         .iter()
-                                        .filter_map(|scope| scope.get_definition(&name))
+                                        .filter_map(|scope| scope.definition(&name))
                                         .next();
                                     if let Some(definition) = definition {
                                         references.insert(
                                             id,
                                             Reference {
                                                 from: id,
-                                                to: definition,
+                                                to: *definition,
                                             },
                                         );
                                     } else {
@@ -184,16 +190,16 @@ impl References {
 
         (
             References {
-                identifier_arena,
+                variable_arena,
                 references,
             },
             errors,
         )
     }
 
-    /// Returns the applicable scopes for a given text range
-    pub fn get_identifiers(&self) -> Vec<&Identifier> {
-        self.identifier_arena.iter().map(|(_id, val)| val).collect()
+    /// Returns all variables
+    pub fn variables(&self) -> impl Iterator<Item = &Variable> {
+        self.variable_arena.iter().map(|(_id, val)| val)
     }
 }
 
@@ -288,11 +294,11 @@ mod tests {
         assert_eq!(errors, vec![]);
         let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
         assert_eq!(references.1, vec![]);
+        let mut variables: Vec<_> = references.0.variables().collect();
+        variables.sort_by(|a, b| a.id.cmp(&b.id));
         assert_display_snapshot!(format!(
             "{}\n=========\n{:#?}\n=========\n{:#?}",
-            nix_code,
-            references.0.get_identifiers(),
-            references.0.references
+            nix_code, variables, references.0.references
         ));
     }
 

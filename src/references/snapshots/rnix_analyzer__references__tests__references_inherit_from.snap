@@ -1,18 +1,18 @@
 ---
 source: src/references/mod.rs
-expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, references . 0 .\n        get_identifiers (), references . 0 . references)"
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, variables,\n        references . 0 . references)"
 ---
 let a.b = 1; in { inherit (a) b; }
 =========
 [
-    Identifier {
+    Variable {
         id: Id {
             idx: 0,
         },
         name: "a",
         text_range: [4; 5),
     },
-    Identifier {
+    Variable {
         id: Id {
             idx: 1,
         },

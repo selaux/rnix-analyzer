@@ -78,7 +78,7 @@ mod tests {
         let result = AnalysisResult::from(&parse_result);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
-        let scopes: Vec<_> = result.get_scopes(range).expect("should return a scope");
+        let scopes: Vec<_> = result.scopes_at(range).collect();
         assert_debug_snapshot!(scopes);
     }
 }

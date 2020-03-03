@@ -3,7 +3,7 @@ use rnix::{TextRange, AST};
 pub mod references;
 pub mod scope;
 
-pub use references::{Identifier, Reference, ReferenceError, References};
+pub use references::{Reference, ReferenceError, References, Variable};
 pub use scope::{
     Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
     Scopes,
@@ -60,31 +60,44 @@ impl AnalysisResult {
         self.errors.iter()
     }
 
-    /// Returns all scopes encountered in the code
+    /// Returns all definitions of variables encountered in the code
+    ///
+    /// ```rust
+    /// let ast = rnix::parse("let foo = 1; in a");
+    /// let analysis = rnix_analyzer::AnalysisResult::from(&ast);
+    ///
+    /// assert!(analysis.definitions().find(|d| d.name == "foo").is_some());
+    /// assert!(analysis.definitions().find(|d| d.name == "builtins").is_some());
+    /// assert!(analysis.definitions().find(|d| d.name == "bar").is_none());
+    /// ```
     pub fn definitions(&self) -> impl Iterator<Item = &Definition> {
-        self.scopes
-            .definition_arena
-            .iter()
-            .map(|(_id, definition)| definition)
+        self.scopes.definitions()
     }
 
-    /// Returns all scopes encountered in the code
+    /// Returns all scopes encountered in the code, including the root scope
+    ///
+    /// ```rust
+    /// let ast = rnix::parse("a: a");
+    /// let analysis = rnix_analyzer::AnalysisResult::from(&ast);
+    ///
+    /// assert_eq!(analysis.scopes().count(), 2);
+    /// ```
     pub fn scopes(&self) -> impl Iterator<Item = &Scope> {
-        self.scopes.scope_arena.iter().map(|(_id, val)| val)
+        self.scopes.scopes()
     }
 
     /// Returns the applicable scopes for a given text range
-    pub fn get_scopes(&self, range: TextRange) -> Option<Vec<&Scope>> {
-        self.scopes.get_scopes(range)
+    pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
+        self.scopes.scopes_at(range)
     }
 
-    /// Returns the applicable scopes for a given text range
-    pub fn get_identifiers(&self) -> Option<Vec<&Identifier>> {
-        Some(self.references.get_identifiers())
+    /// Returns all variables encountered in the code
+    pub fn variables(&self) -> impl Iterator<Item = &Variable> {
+        self.references.variables()
     }
 
     /// Returns the inverse scope tree
     pub fn inverse_scope_tree(&self) -> &InverseScopeTree {
-        &self.scopes.scope_tree
+        self.scopes.inverse_scope_tree()
     }
 }
