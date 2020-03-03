@@ -325,7 +325,7 @@ fn get_path_text_range(path: &[Ident]) -> TextRange {
 fn populate_already_defined_from_attrset(
     already_defined: &mut BTreeMap<String, (Vec<Ident>, Option<AttrSet>)>,
     prefix: &[Ident],
-    set: AttrSet,
+    set: &AttrSet,
 ) {
     for entry in set.entries() {
         let path = entry
@@ -345,18 +345,17 @@ fn populate_already_defined_from_attrset(
         let value_as_attrset = entry.value().and_then(AttrSet::cast);
 
         if let Some(base_path) = path {
-            let path = vec![prefix.to_owned(), base_path.clone()].concat();
+            let path = vec![prefix, &base_path].concat();
             let path_str = path
                 .iter()
-                .map(|i| i.as_str().to_owned())
-                .collect::<Vec<String>>()
+                .map(|ident| ident.as_str())
+                .collect::<Vec<_>>()
                 .join(".");
 
-            already_defined.insert(path_str, (base_path, value_as_attrset.clone()));
-
-            if let Some(value_as_attrset) = value_as_attrset {
+            if let Some(value_as_attrset) = value_as_attrset.as_ref() {
                 populate_already_defined_from_attrset(already_defined, &path, value_as_attrset)
             }
+            already_defined.insert(path_str, (base_path, value_as_attrset));
         }
     }
 }
@@ -401,7 +400,7 @@ fn populate_from_entries<T>(
                     .join(".");
                 if path.len() < 2 {
                     insert_into_defines(scope_kind, defines, &ident, errors, arena);
-                    if let Some(value_as_attrset) = value_as_attrset.clone() {
+                    if let Some(value_as_attrset) = value_as_attrset.as_ref() {
                         populate_already_defined_from_attrset(
                             &mut already_defined,
                             &path,
@@ -427,7 +426,7 @@ fn populate_from_entries<T>(
                         ))
                     } else if !defines.contains_key(&ident_str) {
                         insert_into_defines(scope_kind, defines, &ident, errors, arena);
-                        if let Some(value_as_attrset) = value_as_attrset.clone() {
+                        if let Some(value_as_attrset) = value_as_attrset.as_ref() {
                             populate_already_defined_from_attrset(
                                 &mut already_defined,
                                 &path,

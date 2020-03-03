@@ -11,7 +11,7 @@ fn all_packages(c: &mut Criterion) {
             b.iter(|| scope::collect_scopes(&parsed))
         })
         .throughput(Throughput::Bytes(input.len() as u64))
-        .sample_size(30),
+        .sample_size(10),
     );
     let parsed = parse(input);
     let (scopes, _) = scope::collect_scopes(&parsed);
@@ -21,7 +21,7 @@ fn all_packages(c: &mut Criterion) {
             b.iter(|| references::References::from_ast_and_scope_tree(&parsed, &scopes))
         })
         .throughput(Throughput::Bytes(input.len() as u64))
-        .sample_size(30),
+        .sample_size(10),
     );
     let parsed = parse(input);
     let options = AnalysisOptions {};
@@ -31,7 +31,7 @@ fn all_packages(c: &mut Criterion) {
             b.iter(|| AnalysisResult::from(&parsed, &options))
         })
         .throughput(Throughput::Bytes(input.len() as u64))
-        .sample_size(30),
+        .sample_size(10),
     );
 }
 
