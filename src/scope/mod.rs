@@ -144,6 +144,11 @@ impl Scopes {
         self.scope_arena.iter().map(|v| v.1)
     }
 
+    /// Returns a definition by id
+    pub fn definition(&self, id: &DefinitionId) -> Option<&Definition> {
+        self.definition_arena.get(*id)
+    }
+
     /// Returns all definitions
     pub fn definitions(&self) -> impl Iterator<Item = &Definition> {
         let definition_arena = &self.definition_arena;
@@ -152,7 +157,7 @@ impl Scopes {
             .flat_map(move |id| definition_arena.get(*id))
     }
 
-    /// Returns the applicable scopes at a given text range
+    /// Returns scopes that fully contain the passed range
     pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
         let scope_arena = &self.scope_arena;
         let leaf_scope = self.scope_tree.leaf_scopes.iter().find(|scopes| {

@@ -1,12 +1,14 @@
-use rnix::{TextRange, AST};
+pub use rnix;
+pub use rnix::{TextRange, TextUnit, AST};
 
 pub mod references;
 pub mod scope;
 
-pub use references::{Reference, ReferenceError, References, Variable};
+use references::References;
+pub use references::{Reference, ReferenceError, Variable};
+use scope::Scopes;
 pub use scope::{
     Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
-    Scopes,
 };
 
 /// Error that occured during code analysis
@@ -63,22 +65,52 @@ impl AnalysisResult {
     /// Returns all definitions of variables encountered in the code
     ///
     /// ```rust
-    /// let ast = rnix::parse("let foo = 1; in a");
-    /// let analysis = rnix_analyzer::AnalysisResult::from(&ast);
+    /// use rnix_analyzer::*;
     ///
+    /// let ast = rnix::parse("let foo = 1; in a");
+    /// let analysis = AnalysisResult::from(&ast);
+    ///
+    /// // This is a definition in a let binding
     /// assert!(analysis.definitions().find(|d| d.name == "foo").is_some());
+    /// // This is a definition that is defined by nix itself
     /// assert!(analysis.definitions().find(|d| d.name == "builtins").is_some());
+    /// // This does not exist
     /// assert!(analysis.definitions().find(|d| d.name == "bar").is_none());
     /// ```
     pub fn definitions(&self) -> impl Iterator<Item = &Definition> {
         self.scopes.definitions()
     }
 
+    /// Returns definition for a variable encountered in the code
+    ///
+    /// ```rust
+    /// use rnix_analyzer::*;
+    ///
+    /// let ast = rnix::parse("let foo = 1; in foo");
+    /// let analysis = AnalysisResult::from(&ast);
+    /// let foo = analysis.variables_at(TextRange::from_to(
+    ///     TextUnit::from(16),
+    ///     TextUnit::from(17)
+    /// )).next().unwrap();
+    ///
+    /// assert_eq!(analysis.definition_of(&foo).unwrap().text_range, TextRange::from_to(
+    ///     TextUnit::from(4),
+    ///     TextUnit::from(7)
+    /// ));
+    /// ```
+    pub fn definition_of(&self, variable: &Variable) -> Option<&Definition> {
+        self.references
+            .definition_of(variable)
+            .and_then(|id| self.scopes.definition(id))
+    }
+
     /// Returns all scopes encountered in the code, including the root scope
     ///
     /// ```rust
+    /// use rnix_analyzer::*;
+    ///
     /// let ast = rnix::parse("a: a");
-    /// let analysis = rnix_analyzer::AnalysisResult::from(&ast);
+    /// let analysis = AnalysisResult::from(&ast);
     ///
     /// assert_eq!(analysis.scopes().count(), 2);
     /// ```
@@ -86,14 +118,56 @@ impl AnalysisResult {
         self.scopes.scopes()
     }
 
-    /// Returns the applicable scopes for a given text range
+    /// Returns scopes that fully contain the passed range
+    /// ```rust
+    /// use rnix_analyzer::*;
+    ///
+    /// let ast = rnix::parse("a: b: c");
+    /// let analysis = AnalysisResult::from(&ast);
+    ///
+    /// // Scopes for `a:`
+    /// assert_eq!(analysis.scopes_at(TextRange::from_to(
+    ///     TextUnit::from(0),
+    ///     TextUnit::from(1)
+    /// )).count(), 2);
+    /// // Scopes for `b:`
+    /// assert_eq!(analysis.scopes_at(TextRange::from_to(
+    ///     TextUnit::from(3),
+    ///     TextUnit::from(4)
+    /// )).count(), 3);
+    /// ```
     pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
         self.scopes.scopes_at(range)
     }
 
-    /// Returns all variables encountered in the code
+    /// Returns all variables encountered in the code, including places where they are defined
+    ///
+    /// ```rust
+    /// use rnix_analyzer::*;
+    ///
+    /// let ast = rnix::parse("a: b: c");
+    /// let analysis = AnalysisResult::from(&ast);
+    /// let variables: Vec<_> = analysis.variables().map(|v| v.name.as_str()).collect();
+    ///
+    /// assert_eq!(variables, vec!["a", "b", "c"]);
+    /// ```
     pub fn variables(&self) -> impl Iterator<Item = &Variable> {
         self.references.variables()
+    }
+
+    /// Returns all variables within a text range
+    ///
+    /// ```rust
+    /// use rnix_analyzer::*;
+    ///
+    /// let ast = rnix::parse("a: b: c");
+    /// let analysis = AnalysisResult::from(&ast);
+    /// let variables: Vec<_> = analysis.variables_at(TextRange::from_to(TextUnit::from(3), TextUnit::from(7))).map(|v| v.name.as_str()).collect();
+    ///
+    /// assert_eq!(variables, vec!["b", "c"]);
+    /// ```
+    pub fn variables_at(&self, range: TextRange) -> impl Iterator<Item = &Variable> {
+        self.references.variables_at(range)
     }
 
     /// Returns the inverse scope tree

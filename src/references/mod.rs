@@ -201,6 +201,19 @@ impl References {
     pub fn variables(&self) -> impl Iterator<Item = &Variable> {
         self.variable_arena.iter().map(|(_id, val)| val)
     }
+
+    /// Returns all variables within a range
+    pub fn variables_at(&self, range: TextRange) -> impl Iterator<Item = &Variable> {
+        self.variable_arena
+            .iter()
+            .map(|(_id, val)| val)
+            .filter(move |val| val.text_range.intersection(&range).is_some())
+    }
+
+    /// Definition of variable
+    pub fn definition_of(&self, variable: &Variable) -> Option<&DefinitionId> {
+        self.references.get(&variable.id).map(|v| &v.to)
+    }
 }
 
 #[cfg(test)]
