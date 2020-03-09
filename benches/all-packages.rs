@@ -5,10 +5,16 @@ use rnix_analyzer::AnalysisResult;
 
 fn all_packages(c: &mut Criterion) {
     let input = include_str!("all-packages.nix");
+    c.bench(
+        "all-packages parsing",
+        Benchmark::new("parsing", move |b| b.iter(|| parse(input)))
+            .throughput(Throughput::Bytes(input.len() as u64))
+            .sample_size(10),
+    );
     let parsed = parse(input);
     c.bench(
         "all-packages parsing",
-        Benchmark::new("full", move |b| b.iter(|| AnalysisResult::from(&parsed)))
+        Benchmark::new("analyze", move |b| b.iter(|| AnalysisResult::from(&parsed)))
             .throughput(Throughput::Bytes(input.len() as u64))
             .sample_size(10),
     );
