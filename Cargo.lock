@@ -478,6 +478,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rnix"
 version = "0.7.2"
+source = "git+https://github.com/nix-community/rnix-parser.git?rev=42819c675f17d22af9779f2b1da8245b3b90debe#42819c675f17d22af9779f2b1da8245b3b90debe"
 dependencies = [
  "cbitset 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rowan 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -492,7 +493,7 @@ dependencies = [
  "insta 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rnix 0.7.2",
+ "rnix 0.7.2 (git+https://github.com/nix-community/rnix-parser.git?rev=42819c675f17d22af9779f2b1da8245b3b90debe)",
 ]
 
 [[package]]
@@ -857,6 +858,7 @@ dependencies = [
 "checksum regex 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "322cf97724bea3ee221b78fe25ac9c46114ebb51747ad5babd51a2fc6a8235a8"
 "checksum regex-automata 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "92b73c2a1770c255c240eaa4ee600df1704a38dc3feaa6e949e7fcd4f8dc09f9"
 "checksum regex-syntax 0.6.14 (registry+https://github.com/rust-lang/crates.io-index)" = "b28dfe3fe9badec5dbf0a79a9cccad2cfc2ab5484bdb3e44cbd1ae8b3ba2be06"
+"checksum rnix 0.7.2 (git+https://github.com/nix-community/rnix-parser.git?rev=42819c675f17d22af9779f2b1da8245b3b90debe)" = "<none>"
 "checksum rowan 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1ea7cadf87a9d8432e85cb4eb86bd2e765ace60c24ef86e79084dcae5d1c5a19"
 "checksum rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
