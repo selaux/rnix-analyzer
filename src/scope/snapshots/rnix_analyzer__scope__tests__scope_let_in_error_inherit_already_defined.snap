@@ -1,12 +1,20 @@
 ---
 source: src/scope/mod.rs
-expression: scopes.1
+expression: errors
 ---
 [
-    AlreadyDefined(
-        LetIn,
-        "builtins",
-        [26; 34),
-        [4; 12),
+    Scope(
+        AlreadyDefined(
+            LetIn,
+            "builtins",
+            [26; 34),
+            [4; 12),
+        ),
+    ),
+    Reference(
+        NotFoundInScope(
+            "a",
+            [39; 40),
+        ),
     ),
 ]

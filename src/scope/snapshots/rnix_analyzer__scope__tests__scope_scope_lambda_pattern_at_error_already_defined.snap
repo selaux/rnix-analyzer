@@ -1,12 +1,14 @@
 ---
 source: src/scope/mod.rs
-expression: scopes.1
+expression: errors
 ---
 [
-    AlreadyDefined(
-        Lambda,
-        "a",
-        [7; 8),
-        [1; 2),
+    Scope(
+        AlreadyDefined(
+            Lambda,
+            "a",
+            [7; 8),
+            [1; 2),
+        ),
     ),
 ]

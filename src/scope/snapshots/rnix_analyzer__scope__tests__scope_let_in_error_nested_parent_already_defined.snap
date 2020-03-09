@@ -1,12 +1,14 @@
 ---
 source: src/scope/mod.rs
-expression: scopes.1
+expression: errors
 ---
 [
-    AlreadyDefined(
-        LetIn,
-        "a.b.c",
-        [13; 18),
-        [4; 7),
+    Scope(
+        AlreadyDefined(
+            LetIn,
+            "a.b.c",
+            [13; 18),
+            [4; 7),
+        ),
     ),
 ]

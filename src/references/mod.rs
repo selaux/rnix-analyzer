@@ -1,7 +1,8 @@
-use crate::{scope::defines_scope, DefinitionId, Scope, ScopeKind, Scopes};
+use crate::CollectFromTree;
+use crate::{DefinitionId, Scope, ScopeKind};
 use id_arena::{Arena, Id as ArenaId};
-use rnix::types::{AttrSet, BinOp, Ident, Inherit, TokenWrapper, TypedNode};
-use rnix::{SyntaxKind, SyntaxNode, TextRange, WalkEvent, AST};
+use rnix::types::{BinOp, Ident, Inherit, TokenWrapper, TypedNode};
+use rnix::{SyntaxKind, SyntaxNode, TextRange};
 use std::collections::{BTreeMap, VecDeque};
 
 type VariableId = ArenaId<Variable>;
@@ -39,7 +40,7 @@ pub struct References {
 
 fn filter_identifier(
     parents: &VecDeque<SyntaxNode>,
-    current_attrset_recursive: &VecDeque<bool>,
+    in_scopes: &VecDeque<Scope>,
     node: &SyntaxNode,
 ) -> bool {
     let last_four_parents: Vec<_> = (1..4).map(|v| parents.get(v)).collect();
@@ -59,9 +60,12 @@ fn filter_identifier(
     if last_four_kinds[0] == Some(SyntaxKind::NODE_KEY)
         && last_four_kinds[1] == Some(SyntaxKind::NODE_KEY_VALUE)
         && last_four_kinds[2] == Some(SyntaxKind::NODE_ATTR_SET)
-        && !current_attrset_recursive[0]
     {
-        return true;
+        return !in_scopes
+            .iter()
+            .find(|v| v.kind == ScopeKind::AttrSet || v.kind == ScopeKind::RecursiveAttrSet)
+            .map(|v| v.kind == ScopeKind::RecursiveAttrSet)
+            .unwrap_or(false);
     }
     // Filter identifiers in from clause of inherit
     if last_four_kinds[0] == Some(SyntaxKind::NODE_INHERIT) {
@@ -104,99 +108,6 @@ fn filter_identifier(
 }
 
 impl References {
-    /// Build analysis from ast and scope tree
-    pub fn from_ast_and_scope_tree(ast: &AST, scopes: &Scopes) -> (Self, Vec<ReferenceError>) {
-        let mut errors = vec![];
-        let mut references = BTreeMap::new();
-        let mut variable_arena = Arena::new();
-        let mut current_attrset_recursive: VecDeque<bool> = VecDeque::new();
-        let mut parents: VecDeque<SyntaxNode> = VecDeque::new();
-        let mut in_scopes: VecDeque<&Scope> = VecDeque::new();
-
-        in_scopes.push_front(scopes.root_scope());
-
-        for walk_event in ast.node().preorder() {
-            match walk_event {
-                WalkEvent::Enter(node) => {
-                    let kind = node.kind();
-                    parents.push_front(node.clone());
-                    if defines_scope(kind) {
-                        let scope = scopes
-                            .scopes()
-                            .find(|scope| {
-                                scope.text_range == node.text_range()
-                                    && scope.kind != ScopeKind::Root
-                            })
-                            .expect("scope should exist");
-                        in_scopes.push_front(scope);
-                    }
-
-                    match kind {
-                        SyntaxKind::NODE_ATTR_SET => {
-                            let recursive = AttrSet::cast(node)
-                                .map(|attrset| attrset.recursive())
-                                .unwrap_or(false);
-                            current_attrset_recursive.push_front(recursive);
-                        }
-                        SyntaxKind::NODE_IDENT => {
-                            if !filter_identifier(&parents, &current_attrset_recursive, &node) {
-                                if let Some(ident) = Ident::cast(node) {
-                                    let name = ident.as_str().to_owned();
-                                    let id = variable_arena.alloc_with_id(|id| Variable {
-                                        id,
-                                        name: name.clone(),
-                                        text_range: ident.node().text_range(),
-                                    });
-                                    let definition = in_scopes
-                                        .iter()
-                                        .filter_map(|scope| scope.definition(&name))
-                                        .next();
-                                    if let Some(definition) = definition {
-                                        references.insert(
-                                            id,
-                                            Reference {
-                                                from: id,
-                                                to: *definition,
-                                            },
-                                        );
-                                    } else {
-                                        let non_exhaustive =
-                                            in_scopes.iter().any(|scope| !scope.is_exhaustive());
-                                        if !non_exhaustive {
-                                            errors.push(ReferenceError::NotFoundInScope(
-                                                name,
-                                                ident.node().text_range(),
-                                            ));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                WalkEvent::Leave(node) => {
-                    let kind = node.kind();
-                    if kind == SyntaxKind::NODE_ATTR_SET {
-                        current_attrset_recursive.pop_front();
-                    }
-                    if defines_scope(kind) {
-                        in_scopes.pop_front();
-                    }
-                    parents.pop_front();
-                }
-            }
-        }
-
-        (
-            References {
-                variable_arena,
-                references,
-            },
-            errors,
-        )
-    }
-
     /// Returns all variables
     pub fn variables(&self) -> impl Iterator<Item = &Variable> {
         self.variable_arena.iter().map(|(_id, val)| val)
@@ -216,10 +127,107 @@ impl References {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub(crate) struct TrackReferencesDependencies<'a, 'b> {
+    parents: &'a VecDeque<SyntaxNode>,
+    current_scopes: &'b VecDeque<Scope>,
+}
+
+impl TrackReferencesDependencies<'_, '_> {
+    pub fn new<'a, 'b>(
+        parents: &'a VecDeque<SyntaxNode>,
+        current_scopes: &'b VecDeque<Scope>,
+    ) -> TrackReferencesDependencies<'a, 'b> {
+        TrackReferencesDependencies {
+            parents,
+            current_scopes,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
+pub(crate) struct TrackReferencesState {
+    variable_arena: Arena<Variable>,
+    references: BTreeMap<VariableId, Reference>,
+    errors: Vec<ReferenceError>,
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
+pub(crate) struct TrackReferences {
+    state: TrackReferencesState,
+}
+
+impl TrackReferences {
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl<'a, 'b> CollectFromTree<TrackReferencesDependencies<'a, 'b>> for TrackReferences {
+    type State = TrackReferencesState;
+    type Result = References;
+    type Error = ReferenceError;
+
+    fn enter_node(
+        &mut self,
+        dependencies: TrackReferencesDependencies<'a, 'b>,
+        node: &rnix::SyntaxNode,
+    ) {
+        let parents = dependencies.parents;
+        let in_scopes = dependencies.current_scopes;
+        if node.kind() == SyntaxKind::NODE_IDENT && !filter_identifier(parents, in_scopes, node) {
+            if let Some(ident) = Ident::cast(node.clone()) {
+                let name = ident.as_str().to_owned();
+                let id = self.state.variable_arena.alloc_with_id(|id| Variable {
+                    id,
+                    name: name.clone(),
+                    text_range: ident.node().text_range(),
+                });
+                let definition = in_scopes
+                    .iter()
+                    .filter_map(|scope| scope.definition(&name))
+                    .next();
+                if let Some(definition) = definition {
+                    self.state.references.insert(
+                        id,
+                        Reference {
+                            from: id,
+                            to: *definition,
+                        },
+                    );
+                } else {
+                    let non_exhaustive = in_scopes.iter().any(|scope| !scope.is_exhaustive());
+                    if !non_exhaustive {
+                        self.state.errors.push(ReferenceError::NotFoundInScope(
+                            name,
+                            ident.node().text_range(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    fn exit_node(&mut self, _: TrackReferencesDependencies<'a, 'b>, _: &rnix::SyntaxNode) {}
+
+    fn state(&self) -> &Self::State {
+        &self.state
+    }
+
+    fn result(self) -> (Self::Result, Vec<Self::Error>) {
+        (
+            References {
+                variable_arena: self.state.variable_arena,
+                references: self.state.references,
+            },
+            self.state.errors,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
     use crate::{AnalysisError, AnalysisResult};
     use insta::{assert_debug_snapshot, assert_display_snapshot};
     use std::process::Command;
@@ -305,13 +313,11 @@ mod tests {
         let result = AnalysisResult::from(&parse_result);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
         assert_eq!(errors, vec![]);
-        let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
-        assert_eq!(references.1, vec![]);
-        let mut variables: Vec<_> = references.0.variables().collect();
+        let mut variables: Vec<_> = result.references.variables().collect();
         variables.sort_by(|a, b| a.id.cmp(&b.id));
         assert_display_snapshot!(format!(
             "{}\n=========\n{:#?}\n=========\n{:#?}",
-            nix_code, variables, references.0.references
+            nix_code, variables, result.references.references
         ));
     }
 
@@ -326,7 +332,7 @@ mod tests {
         let parse_result = rnix::parse(nix_code);
         assert_eq!(parse_result.errors(), vec![]);
         let result = AnalysisResult::from(&parse_result);
-        let references = References::from_ast_and_scope_tree(&parse_result, &result.scopes);
-        assert_debug_snapshot!(references.1);
+        let errors: Vec<AnalysisError> = result.errors().cloned().collect();
+        assert_debug_snapshot!(errors);
     }
 }

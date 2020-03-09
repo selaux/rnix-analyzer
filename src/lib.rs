@@ -1,4 +1,7 @@
+use std::collections::VecDeque;
+
 pub use rnix;
+use rnix::{SyntaxNode, WalkEvent};
 pub use rnix::{TextRange, TextUnit, AST};
 
 pub mod references;
@@ -10,6 +13,53 @@ use scope::Scopes;
 pub use scope::{
     Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
 };
+
+pub(crate) trait CollectFromTree<D> {
+    type State;
+    type Result;
+    type Error;
+
+    fn enter_node(&mut self, dependencies: D, node: &rnix::SyntaxNode);
+
+    fn exit_node(&mut self, dependencies: D, node: &rnix::SyntaxNode);
+
+    fn state(&self) -> &Self::State;
+
+    fn result(self) -> (Self::Result, Vec<Self::Error>);
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
+pub(crate) struct TrackParent {
+    pub(crate) state: VecDeque<SyntaxNode>,
+}
+
+impl TrackParent {
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl CollectFromTree<()> for TrackParent {
+    type State = VecDeque<SyntaxNode>;
+    type Result = ();
+    type Error = ();
+
+    fn enter_node(&mut self, _: (), node: &rnix::SyntaxNode) {
+        self.state.push_front(node.clone());
+    }
+
+    fn exit_node(&mut self, _: (), _: &rnix::SyntaxNode) {
+        self.state.pop_front();
+    }
+
+    fn state(&self) -> &Self::State {
+        &self.state
+    }
+
+    fn result(self) -> (Self::Result, Vec<Self::Error>) {
+        ((), vec![])
+    }
+}
 
 /// Error that occured during code analysis
 #[derive(Debug, PartialEq, Clone)]
@@ -35,16 +85,45 @@ impl From<&ReferenceError> for AnalysisError {
 /// Analysis result of a code analysis run
 #[derive(Debug, PartialEq, Clone)]
 pub struct AnalysisResult {
-    scopes: Scopes,
-    references: References,
+    pub(crate) scopes: Scopes,
+    pub(crate) references: References,
     errors: Vec<AnalysisError>,
 }
 
 impl AnalysisResult {
     /// Analyze the code within `ast` and return the resulting `AnalysisResult`
     pub fn from(ast: &AST) -> Self {
-        let (scopes, scope_errors) = scope::collect_scopes(&ast);
-        let (references, reference_errors) = References::from_ast_and_scope_tree(ast, &scopes);
+        let mut track_parents = TrackParent::new();
+        let mut scopes = scope::TrackScopes::new(ast);
+        let mut references = references::TrackReferences::new();
+        for walk_event in ast.node().preorder() {
+            match walk_event {
+                WalkEvent::Enter(node) => {
+                    track_parents.enter_node((), &node);
+                    scopes.enter_node((), &node);
+                    let parents = track_parents.state();
+                    let scope_state = scopes.state();
+                    let deps = references::TrackReferencesDependencies::new(
+                        &parents,
+                        &scope_state.current_scopes,
+                    );
+                    references.enter_node(deps, &node);
+                }
+                WalkEvent::Leave(node) => {
+                    let parents = track_parents.state();
+                    let scope_state = scopes.state();
+                    let deps = references::TrackReferencesDependencies::new(
+                        &parents,
+                        &scope_state.current_scopes,
+                    );
+                    references.exit_node(deps, &node);
+                    scopes.exit_node((), &node);
+                    track_parents.exit_node((), &node);
+                }
+            }
+        }
+        let (scopes, scope_errors) = scopes.result();
+        let (references, reference_errors) = references.result();
         let errors: Vec<_> = scope_errors
             .iter()
             .map(AnalysisError::from)

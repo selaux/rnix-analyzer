@@ -1,27 +1,10 @@
 use criterion::{criterion_group, criterion_main, Benchmark, Criterion, Throughput};
 use rand::Rng;
 use rnix::{parse, TextRange, TextUnit};
-use rnix_analyzer::{references, scope, AnalysisResult};
+use rnix_analyzer::AnalysisResult;
 
 fn all_packages(c: &mut Criterion) {
     let input = include_str!("all-packages.nix");
-    let parsed = parse(input);
-    c.bench(
-        "all-packages parsing",
-        Benchmark::new("scopes", move |b| b.iter(|| scope::collect_scopes(&parsed)))
-            .throughput(Throughput::Bytes(input.len() as u64))
-            .sample_size(10),
-    );
-    let parsed = parse(input);
-    let (scopes, _) = scope::collect_scopes(&parsed);
-    c.bench(
-        "all-packages parsing",
-        Benchmark::new("references", move |b| {
-            b.iter(|| references::References::from_ast_and_scope_tree(&parsed, &scopes))
-        })
-        .throughput(Throughput::Bytes(input.len() as u64))
-        .sample_size(10),
-    );
     let parsed = parse(input);
     c.bench(
         "all-packages parsing",

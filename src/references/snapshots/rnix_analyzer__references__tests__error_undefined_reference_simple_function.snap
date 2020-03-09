@@ -1,10 +1,12 @@
 ---
 source: src/references/mod.rs
-expression: references.1
+expression: errors
 ---
 [
-    NotFoundInScope(
-        "b",
-        [3; 4),
+    Reference(
+        NotFoundInScope(
+            "b",
+            [3; 4),
+        ),
     ),
 ]

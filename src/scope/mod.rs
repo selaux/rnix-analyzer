@@ -1,3 +1,4 @@
+use crate::CollectFromTree;
 use id_arena::{Arena, Id as ArenaId};
 use rnix::{
     types::{
@@ -5,7 +6,7 @@ use rnix::{
     },
     SyntaxKind, TextRange, TextUnit,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::convert::TryFrom;
 
 pub mod tree;
@@ -188,22 +189,22 @@ trait DefinesScope {
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    );
+    ) -> ScopeId;
 }
 
 impl DefinesScope for With {
-    fn get_scope(
+    fn get_scope<'a>(
         &self,
         _definition_arena: &mut Arena<Definition>,
-        scope_arena: &mut Arena<Scope>,
+        scope_arena: &'a mut Arena<Scope>,
         _errors: &mut Vec<ScopeAnalysisError>,
-    ) {
+    ) -> ScopeId {
         scope_arena.alloc_with_id(|id| Scope {
             id,
             kind: ScopeKind::With,
             defines: BTreeMap::new(),
             text_range: self.node().text_range(),
-        });
+        })
     }
 }
 
@@ -213,7 +214,7 @@ impl DefinesScope for LetIn {
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) {
+    ) -> ScopeId {
         let mut defines = BTreeMap::new();
         populate_from_entries(
             ScopeKind::LetIn,
@@ -239,7 +240,7 @@ impl DefinesScope for LetIn {
             kind: ScopeKind::LetIn,
             defines,
             text_range: self.node().text_range(),
-        });
+        })
     }
 }
 
@@ -249,7 +250,7 @@ impl DefinesScope for AttrSet {
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) {
+    ) -> ScopeId {
         let mut defines = BTreeMap::new();
         let scope_kind = if self.recursive() {
             ScopeKind::RecursiveAttrSet
@@ -273,7 +274,7 @@ impl DefinesScope for AttrSet {
             kind: scope_kind,
             defines,
             text_range: self.node().text_range(),
-        });
+        })
     }
 }
 
@@ -283,7 +284,7 @@ impl DefinesScope for Lambda {
         definition_arena: &mut Arena<Definition>,
         scope_arena: &mut Arena<Scope>,
         errors: &mut Vec<ScopeAnalysisError>,
-    ) {
+    ) -> ScopeId {
         let mut defines = BTreeMap::new();
         let arg_definition = self.arg().and_then(|arg| ParsedType::try_from(arg).ok());
         match arg_definition {
@@ -324,7 +325,7 @@ impl DefinesScope for Lambda {
             kind: ScopeKind::Lambda,
             defines,
             text_range: self.node().text_range(),
-        });
+        })
     }
 }
 
@@ -496,55 +497,109 @@ pub fn defines_scope(kind: SyntaxKind) -> bool {
         || kind == SyntaxKind::NODE_WITH
 }
 
-/// Collect scopes from the AST, returns scopes and errors encountered during scope analysis
-pub fn collect_scopes(ast: &rnix::AST) -> (Scopes, Vec<ScopeAnalysisError>) {
-    let mut errors_global = vec![];
-    let mut definition_arena = Arena::new();
-    let mut scope_arena = Arena::new();
-    let root_defines = root_defines(&mut definition_arena);
-    let root_scope = scope_arena.alloc_with_id(|id| Scope {
-        id,
-        kind: ScopeKind::Root,
-        defines: root_defines,
-        text_range: ast.node().text_range(),
-    });
+#[derive(Debug, PartialEq, Clone)]
+pub(crate) struct TrackScopesState {
+    pub(crate) definition_arena: Arena<Definition>,
+    pub(crate) scope_arena: Arena<Scope>,
+    pub(crate) root_scope: ScopeId,
+    pub(crate) current_scopes: VecDeque<Scope>,
+    pub(crate) errors: Vec<ScopeAnalysisError>,
+}
 
-    for node in ast.node().descendants() {
-        if defines_scope(node.kind()) {
-            match ParsedType::try_from(node) {
-                Ok(ParsedType::With(with)) => {
-                    with.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
-                }
-                Ok(ParsedType::LetIn(let_in)) => {
-                    let_in.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
-                }
-                Ok(ParsedType::AttrSet(attrset)) => {
-                    attrset.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
-                }
-                Ok(ParsedType::Lambda(lambda)) => {
-                    lambda.get_scope(&mut definition_arena, &mut scope_arena, &mut errors_global);
-                }
-                _ => {}
-            }
+#[derive(Debug, PartialEq, Clone)]
+pub(crate) struct TrackScopes {
+    state: TrackScopesState,
+}
+
+impl TrackScopes {
+    pub fn new(ast: &rnix::AST) -> Self {
+        let errors = vec![];
+        let mut definition_arena = Arena::new();
+        let mut scope_arena = Arena::new();
+        let root_defines = root_defines(&mut definition_arena);
+        let root_scope = scope_arena.alloc_with_id(|id| Scope {
+            id,
+            kind: ScopeKind::Root,
+            defines: root_defines,
+            text_range: ast.node().text_range(),
+        });
+        let current_scopes = vec![scope_arena[root_scope].clone()];
+
+        TrackScopes {
+            state: TrackScopesState {
+                definition_arena,
+                scope_arena,
+                root_scope,
+                current_scopes: VecDeque::from(current_scopes),
+                errors,
+            },
         }
     }
-    let scope_tree = InverseScopeTree::from_scopes(&scope_arena);
+}
 
-    (
-        Scopes {
-            definition_arena,
-            scope_arena,
-            scope_tree,
-            root_scope,
-        },
-        errors_global,
-    )
+impl CollectFromTree<()> for TrackScopes {
+    type State = TrackScopesState;
+    type Result = Scopes;
+    type Error = ScopeAnalysisError;
+
+    fn enter_node(&mut self, _: (), node: &rnix::SyntaxNode) {
+        if defines_scope(node.kind()) {
+            let scope_id = match ParsedType::try_from(node.clone()) {
+                Ok(ParsedType::With(with)) => with.get_scope(
+                    &mut self.state.definition_arena,
+                    &mut self.state.scope_arena,
+                    &mut self.state.errors,
+                ),
+                Ok(ParsedType::LetIn(let_in)) => let_in.get_scope(
+                    &mut self.state.definition_arena,
+                    &mut self.state.scope_arena,
+                    &mut self.state.errors,
+                ),
+                Ok(ParsedType::AttrSet(attrset)) => attrset.get_scope(
+                    &mut self.state.definition_arena,
+                    &mut self.state.scope_arena,
+                    &mut self.state.errors,
+                ),
+                Ok(ParsedType::Lambda(lambda)) => lambda.get_scope(
+                    &mut self.state.definition_arena,
+                    &mut self.state.scope_arena,
+                    &mut self.state.errors,
+                ),
+                _ => unreachable!(),
+            };
+            self.state
+                .current_scopes
+                .push_front(self.state.scope_arena[scope_id].clone());
+        }
+    }
+
+    fn exit_node(&mut self, _: (), node: &rnix::SyntaxNode) {
+        if defines_scope(node.kind()) {
+            self.state.current_scopes.pop_front();
+        }
+    }
+
+    fn state(&self) -> &Self::State {
+        &self.state
+    }
+
+    fn result(self) -> (Self::Result, Vec<Self::Error>) {
+        let scope_tree = InverseScopeTree::from_scopes(&self.state.scope_arena);
+        (
+            Scopes {
+                definition_arena: self.state.definition_arena,
+                scope_arena: self.state.scope_arena,
+                scope_tree,
+                root_scope: self.state.root_scope,
+            },
+            self.state.errors,
+        )
+    }
 }
 
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
     use crate::{AnalysisError, AnalysisResult};
     use insta::{assert_debug_snapshot, assert_display_snapshot};
     use std::process::Command;
@@ -733,7 +788,8 @@ mod tests {
         assert_eq!(output.status.code(), Some(1));
         let parse_result = rnix::parse(nix_code);
         assert_eq!(parse_result.errors(), vec![]);
-        let scopes = collect_scopes(&parse_result);
-        assert_debug_snapshot!(scopes.1);
+        let result = AnalysisResult::from(&parse_result);
+        let errors: Vec<AnalysisError> = result.errors().cloned().collect();
+        assert_debug_snapshot!(errors);
     }
 }
