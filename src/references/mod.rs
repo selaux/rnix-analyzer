@@ -5,7 +5,7 @@ use rnix::types::{BinOp, BinOpKind, Ident, Inherit, TokenWrapper, TypedNode};
 use rnix::{SyntaxKind, SyntaxNode, TextRange};
 use std::collections::{BTreeMap, VecDeque};
 
-type VariableId = ArenaId<Variable>;
+pub type VariableId = ArenaId<Variable>;
 
 /// A variable occurence in code
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -109,6 +109,10 @@ fn filter_identifier(
 }
 
 impl References {
+    /// Returns a variable by id
+    pub fn variable(&self, id: &VariableId) -> Option<&Variable> {
+        self.variable_arena.get(*id)
+    }
     /// Returns all variables
     pub fn variables(&self) -> impl Iterator<Item = &Variable> {
         self.variable_arena.iter().map(|(_id, val)| val)

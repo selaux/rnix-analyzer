@@ -8,7 +8,7 @@ pub mod references;
 pub mod scope;
 
 use references::References;
-pub use references::{Reference, ReferenceError, Variable};
+pub use references::{Reference, ReferenceError, Variable, VariableId};
 use scope::Scopes;
 pub use scope::{
     Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
@@ -141,6 +141,11 @@ impl AnalysisResult {
         self.errors.iter()
     }
 
+    /// Returns a definition by id
+    pub fn definition(&self, definition_id: &DefinitionId) -> Option<&Definition> {
+        self.scopes.definition(definition_id)
+    }
+
     /// Returns all definitions of variables encountered in the code
     ///
     /// ```rust
@@ -183,6 +188,11 @@ impl AnalysisResult {
             .and_then(|id| self.scopes.definition(id))
     }
 
+    /// Returns a scope by id
+    pub fn scope(&self, scope_id: &ScopeId) -> Option<&Scope> {
+        self.scopes.scope(scope_id)
+    }
+
     /// Returns all scopes encountered in the code, including the root scope
     ///
     /// ```rust
@@ -217,6 +227,11 @@ impl AnalysisResult {
     /// ```
     pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
         self.scopes.scopes_at(range)
+    }
+
+    /// Returns a variable by id
+    pub fn variable(&self, variable_id: &VariableId) -> Option<&Variable> {
+        self.references.variable(variable_id)
     }
 
     /// Returns all variables encountered in the code, including places where they are defined
@@ -285,5 +300,19 @@ impl AnalysisResult {
     /// Returns the inverse scope tree
     pub fn inverse_scope_tree(&self) -> &InverseScopeTree {
         self.scopes.inverse_scope_tree()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rnix::{TextRange, TextUnit};
+    #[test]
+    fn test_empty_text_range_should_be_a_subrange_and_intersect() {
+        let containing = TextRange::from_to(TextUnit::from(0), TextUnit::from(10));
+        let inside = TextRange::from_to(TextUnit::from(1), TextUnit::from(1));
+
+        // This basically tests assumptions
+        assert!(inside.is_subrange(&containing));
+        assert!(inside.intersection(&containing).is_some());
     }
 }

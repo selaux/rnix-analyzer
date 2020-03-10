@@ -136,8 +136,8 @@ pub struct Scopes {
 /// Result of scope analysis
 impl Scopes {
     /// Returns a scope by id
-    pub fn scope(&self, id: ScopeId) -> Option<&Scope> {
-        self.scope_arena.get(id)
+    pub fn scope(&self, id: &ScopeId) -> Option<&Scope> {
+        self.scope_arena.get(*id)
     }
 
     /// Returns all scopes
