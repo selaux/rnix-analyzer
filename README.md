@@ -2,6 +2,8 @@
 
 Allows to analyze nix code and query the result. Intended for use in a language server.
 
+This is currently in very early development. It still finds some issues with current `nixpkgs`, which should not be there.
+
 ## Features
 
 ### Scope Analysis
@@ -78,3 +80,12 @@ assert_eq!(foo_occurences, vec![
     )),
 ]);
 ```
+
+## Example
+
+An example for analysis can be found in the `examples/` directory. For examples for querying please look
+into the rust docs (as there is currently no version released, you need to build it yourself).
+
+## Performance
+
+You can run the included benchmarks. Currently takes around 80ms for `all-packages.nix` on my machine and around 6 seconds for the whole `nixpkgs` repo.
