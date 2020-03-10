@@ -11,10 +11,4 @@ expression: errors
             [4; 12),
         ),
     ),
-    Reference(
-        NotFoundInScope(
-            "a",
-            [39; 40),
-        ),
-    ),
 ]

@@ -249,6 +249,39 @@ impl AnalysisResult {
         self.references.variables_at(range)
     }
 
+    /// Returns all variables for a definition
+    ///
+    /// ```rust
+    /// use rnix_analyzer::*;
+    ///
+    /// let ast = rnix::parse("let foo = 1; in foo + foo");
+    /// let analysis = AnalysisResult::from(&ast);
+    /// let foo = analysis.variables_at(TextRange::from_to(
+    ///     TextUnit::from(16),
+    ///     TextUnit::from(17)
+    /// )).next().unwrap();
+    /// let foo_def = analysis.definition_of(&foo).unwrap();
+    /// let foo_occurences: Vec<_> = analysis.variables_for(&foo_def).map(|v| (v.name.clone(), v.text_range)).collect();
+    ///
+    /// assert_eq!(foo_occurences, vec![
+    ///     ("foo".to_string(), TextRange::from_to(
+    ///         TextUnit::from(4),
+    ///         TextUnit::from(7)
+    ///     )),
+    ///     ("foo".to_string(), TextRange::from_to(
+    ///         TextUnit::from(16),
+    ///         TextUnit::from(19)
+    ///     )),
+    ///     ("foo".to_string(), TextRange::from_to(
+    ///         TextUnit::from(22),
+    ///         TextUnit::from(25)
+    ///     )),
+    /// ]);
+    /// ```
+    pub fn variables_for(&self, definition: &Definition) -> impl Iterator<Item = &Variable> {
+        self.references.variables_for(&definition.id)
+    }
+
     /// Returns the inverse scope tree
     pub fn inverse_scope_tree(&self) -> &InverseScopeTree {
         self.scopes.inverse_scope_tree()

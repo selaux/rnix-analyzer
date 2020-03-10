@@ -1,7 +1,7 @@
 use crate::CollectFromTree;
 use crate::{DefinitionId, Scope, ScopeKind};
 use id_arena::{Arena, Id as ArenaId};
-use rnix::types::{BinOp, Ident, Inherit, TokenWrapper, TypedNode};
+use rnix::types::{BinOp, BinOpKind, Ident, Inherit, TokenWrapper, TypedNode};
 use rnix::{SyntaxKind, SyntaxNode, TextRange};
 use std::collections::{BTreeMap, VecDeque};
 
@@ -81,11 +81,12 @@ fn filter_identifier(
     if last_four_kinds[0] == Some(SyntaxKind::NODE_BIN_OP) {
         let parent = last_four_parents[0].cloned().and_then(BinOp::cast);
         if let Some(parent) = parent {
+            let kind = parent.operator();
             let im_right = parent
                 .rhs()
                 .map(|n| node.text_range().is_subrange(&n.text_range()))
                 .unwrap_or(false);
-            if im_right {
+            if kind == BinOpKind::IsSet && im_right {
                 return true;
             }
         }
@@ -117,8 +118,18 @@ impl References {
     pub fn variables_at(&self, range: TextRange) -> impl Iterator<Item = &Variable> {
         self.variable_arena
             .iter()
-            .map(|(_id, val)| val)
-            .filter(move |val| val.text_range.intersection(&range).is_some())
+            .map(|(_id, variable)| variable)
+            .filter(move |variable| variable.text_range.intersection(&range).is_some())
+    }
+
+    /// Get all variables for a definition
+    pub fn variables_for(&self, definition_id: &DefinitionId) -> impl Iterator<Item = &Variable> {
+        let definition_id = *definition_id;
+        let variable_arena = &self.variable_arena;
+        self.references
+            .iter()
+            .filter(move |(_id, reference)| reference.to == definition_id)
+            .map(move |(_id, reference)| &variable_arena[reference.from])
     }
 
     /// Definition of variable
@@ -236,6 +247,11 @@ mod tests {
     #[test]
     fn test_references_simple_function() {
         assert_refences_snapshot("a: a");
+    }
+
+    #[test]
+    fn test_references_simple_function_with_binop() {
+        assert_refences_snapshot("a: a + a");
     }
 
     #[test]

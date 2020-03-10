@@ -1,0 +1,62 @@
+---
+source: src/references/mod.rs
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, variables, result\n        . references . references)"
+---
+a: a + a
+=========
+[
+    Variable {
+        id: Id {
+            idx: 0,
+        },
+        name: "a",
+        text_range: [0; 1),
+    },
+    Variable {
+        id: Id {
+            idx: 1,
+        },
+        name: "a",
+        text_range: [3; 4),
+    },
+    Variable {
+        id: Id {
+            idx: 2,
+        },
+        name: "a",
+        text_range: [7; 8),
+    },
+]
+=========
+{
+    Id {
+        idx: 0,
+    }: Reference {
+        from: Id {
+            idx: 0,
+        },
+        to: Id {
+            idx: 16,
+        },
+    },
+    Id {
+        idx: 1,
+    }: Reference {
+        from: Id {
+            idx: 1,
+        },
+        to: Id {
+            idx: 16,
+        },
+    },
+    Id {
+        idx: 2,
+    }: Reference {
+        from: Id {
+            idx: 2,
+        },
+        to: Id {
+            idx: 16,
+        },
+    },
+}

@@ -672,7 +672,7 @@ mod tests {
 
     #[test]
     fn test_scope_let_in_error_inherit_already_defined() {
-        run_error_snapshot_test("let builtins = 2; inherit builtins; in a + b")
+        run_error_snapshot_test("let builtins = 2; inherit builtins; in builtins + builtins")
     }
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
 
     #[test]
     fn test_scope_let_in_error_inherit_from_already_defined() {
-        run_error_snapshot_test("let a = 2; inherit (builtins) a; in a + b")
+        run_error_snapshot_test("let a = 2; inherit (builtins) a; in a + a")
     }
 
     #[test]
