@@ -5,7 +5,7 @@ authors = ["Stefan Lau <github@stefanlau.com>"]
 edition = "2018"
 
 [dependencies]
-rnix = { git = "https://github.com/nix-community/rnix-parser.git", rev = "42819c675f17d22af9779f2b1da8245b3b90debe" }
+rnix = { git = "https://github.com/nix-community/rnix-parser.git", rev = "f232ef4860a51f869eefa8d792098c5b8ca875fb" }
 id-arena = "2.2"
 
 [dev-dependencies]
