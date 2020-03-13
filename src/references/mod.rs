@@ -1,7 +1,7 @@
 use crate::CollectFromTree;
 use crate::{DefinitionId, Scope, ScopeKind};
 use id_arena::{Arena, Id as ArenaId};
-use rnix::types::{BinOp, BinOpKind, Ident, Inherit, TokenWrapper, TypedNode};
+use rnix::types::{BinOp, BinOpKind, Ident, Inherit, Select, TokenWrapper, TypedNode};
 use rnix::{SyntaxKind, SyntaxNode, TextRange};
 use std::collections::{BTreeMap, VecDeque};
 
@@ -41,6 +41,7 @@ pub struct References {
 fn filter_identifier(
     parents: &VecDeque<SyntaxNode>,
     in_scopes: &VecDeque<Scope>,
+    in_select: &VecDeque<Select>,
     node: &SyntaxNode,
 ) -> bool {
     let last_four_parents: Vec<_> = (1..4).map(|v| parents.get(v)).collect();
@@ -77,12 +78,17 @@ fn filter_identifier(
             return true;
         }
     }
-    // Filter identifiers in object contains binary operator
-    if last_four_kinds[0] == Some(SyntaxKind::NODE_BIN_OP) {
-        let parent = last_four_parents[0].cloned().and_then(BinOp::cast);
-        if let Some(parent) = parent {
-            let kind = parent.operator();
-            let im_right = parent
+    // Filter identifiers in attrset contains binary operator
+    if last_four_kinds[0] == Some(SyntaxKind::NODE_BIN_OP) || in_select.get(0).is_some() {
+        let binop = parents
+            .iter()
+            .skip_while(|node| node.kind() == SyntaxKind::NODE_SELECT)
+            .find(|node| node.kind() == SyntaxKind::NODE_BIN_OP)
+            .cloned()
+            .and_then(BinOp::cast);
+        if let Some(binop) = binop {
+            let kind = binop.operator();
+            let im_right = binop
                 .rhs()
                 .map(|n| node.text_range().is_subrange(&n.text_range()))
                 .unwrap_or(false);
@@ -160,14 +166,15 @@ impl TrackReferencesDependencies<'_, '_> {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct TrackReferencesState {
     variable_arena: Arena<Variable>,
     references: BTreeMap<VariableId, Reference>,
     errors: Vec<ReferenceError>,
+    in_select: VecDeque<Select>,
 }
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct TrackReferences {
     state: TrackReferencesState,
 }
@@ -190,7 +197,13 @@ impl<'a, 'b> CollectFromTree<TrackReferencesDependencies<'a, 'b>> for TrackRefer
     ) {
         let parents = dependencies.parents;
         let in_scopes = dependencies.current_scopes;
-        if node.kind() == SyntaxKind::NODE_IDENT && !filter_identifier(parents, in_scopes, node) {
+        if node.kind() == SyntaxKind::NODE_SELECT {
+            let select = Select::cast(node.clone()).expect("select should be castable");
+            self.state.in_select.push_front(select);
+        }
+        if node.kind() == SyntaxKind::NODE_IDENT
+            && !filter_identifier(parents, in_scopes, &self.state.in_select, node)
+        {
             if let Some(ident) = Ident::cast(node.clone()) {
                 let name = ident.as_str().to_owned();
                 let id = self.state.variable_arena.alloc_with_id(|id| Variable {
@@ -223,7 +236,11 @@ impl<'a, 'b> CollectFromTree<TrackReferencesDependencies<'a, 'b>> for TrackRefer
         }
     }
 
-    fn exit_node(&mut self, _: TrackReferencesDependencies<'a, 'b>, _: &rnix::SyntaxNode) {}
+    fn exit_node(&mut self, _: TrackReferencesDependencies<'a, 'b>, node: &rnix::SyntaxNode) {
+        if node.kind() == SyntaxKind::NODE_SELECT {
+            self.state.in_select.pop_front();
+        }
+    }
 
     fn state(&self) -> &Self::State {
         &self.state
@@ -281,6 +298,11 @@ mod tests {
     #[test]
     fn test_references_object_contains_path() {
         assert_refences_snapshot("let a.b = 1; in a ? c.d");
+    }
+
+    #[test]
+    fn test_references_object_contains_deep_path() {
+        assert_refences_snapshot("let a.b = 1; in a ? c.d.e");
     }
 
     #[test]
