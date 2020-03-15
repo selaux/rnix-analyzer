@@ -2,9 +2,11 @@ use crate::CollectFromTree;
 use id_arena::{Arena, Id as ArenaId};
 use rnix::{
     types::{
-        AttrSet, EntryHolder, Ident, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With,
+        AttrSet, Dynamic, EntryHolder, Ident, Key, Lambda, LetIn, ParsedType, Str, TokenWrapper,
+        TypedNode, With,
     },
-    SyntaxKind, TextRange, TextUnit,
+    value::StrPart,
+    SyntaxKind, SyntaxNode, TextRange, TextUnit,
 };
 use std::collections::{BTreeMap, VecDeque};
 use std::convert::TryFrom;
@@ -225,10 +227,13 @@ impl DefinesScope for LetIn {
         );
         for inherit in self.inherits() {
             for ident in inherit.idents() {
+                let ident_str = ident.as_str().to_owned();
+
                 insert_into_defines(
                     ScopeKind::LetIn,
                     &mut defines,
-                    &ident,
+                    &ident_str,
+                    ident.node().text_range(),
                     errors,
                     definition_arena,
                 );
@@ -260,10 +265,12 @@ impl DefinesScope for AttrSet {
         populate_from_entries(scope_kind, self, &mut defines, errors, definition_arena);
         for inherit in self.inherits() {
             for ident in inherit.idents() {
+                let ident_str = ident.as_str().to_owned();
                 insert_into_defines(
                     ScopeKind::LetIn,
                     &mut defines,
-                    &ident,
+                    &ident_str,
+                    ident.node().text_range(),
                     errors,
                     definition_arena,
                 );
@@ -288,30 +295,38 @@ impl DefinesScope for Lambda {
         let mut defines = BTreeMap::new();
         let arg_definition = self.arg().and_then(|arg| ParsedType::try_from(arg).ok());
         match arg_definition {
-            Some(ParsedType::Ident(ident)) => insert_into_defines(
-                ScopeKind::Lambda,
-                &mut defines,
-                &ident,
-                errors,
-                definition_arena,
-            ),
+            Some(ParsedType::Ident(ident)) => {
+                let ident_str = ident.as_str().to_owned();
+                insert_into_defines(
+                    ScopeKind::Lambda,
+                    &mut defines,
+                    &ident_str,
+                    ident.node().text_range(),
+                    errors,
+                    definition_arena,
+                )
+            }
             Some(ParsedType::Pattern(pattern)) => {
                 for entry in pattern.entries() {
                     if let Some(ident) = entry.name() {
+                        let ident_str = ident.as_str().to_owned();
                         insert_into_defines(
                             ScopeKind::Lambda,
                             &mut defines,
-                            &ident,
+                            &ident_str,
+                            ident.node().text_range(),
                             errors,
                             definition_arena,
                         )
                     }
                 }
                 if let Some(ident) = pattern.at() {
+                    let ident_str = ident.as_str().to_owned();
                     insert_into_defines(
                         ScopeKind::Lambda,
                         &mut defines,
-                        &ident,
+                        &ident_str,
+                        ident.node().text_range(),
                         errors,
                         definition_arena,
                     )
@@ -332,84 +347,261 @@ impl DefinesScope for Lambda {
 fn insert_into_defines(
     scope_kind: ScopeKind,
     defines: &mut BTreeMap<String, DefinitionId>,
-    ident: &Ident,
+    name: &str,
+    text_range: TextRange,
     errors: &mut Vec<ScopeAnalysisError>,
     arena: &mut Arena<Definition>,
 ) {
-    let name = ident.as_str().to_owned();
-    if let Some(existing) = defines.get(&name) {
+    if let Some(existing) = defines.get(name) {
         errors.push(ScopeAnalysisError::AlreadyDefined(
             scope_kind,
-            name,
-            ident.node().text_range(),
+            name.to_owned(),
+            text_range,
             arena[*existing].text_range,
         ));
     } else {
         let id = arena.alloc_with_id(|id| Definition {
             id,
-            name: name.clone(),
-            text_range: ident.node().text_range(),
+            name: name.to_owned(),
+            text_range,
         });
         defines.insert(name.to_owned(), id);
     }
 }
 
-fn get_path_text_range(path: &[Ident]) -> TextRange {
-    let from = path
-        .first()
-        .expect("should be a range")
-        .node()
-        .text_range()
-        .start();
-    let to = path
-        .last()
-        .expect("should be a range")
-        .node()
-        .text_range()
-        .end();
-    TextRange::from_to(from, to)
+#[derive(Clone)]
+pub enum DefinitionPathSegment {
+    Ident(Ident),
+    Str(Str),
+    InterpolatedString(Str),
+    Dynamic(Dynamic),
 }
 
-fn populate_already_defined_from_attrset(
-    already_defined: &mut BTreeMap<String, (Vec<Ident>, Option<AttrSet>)>,
-    prefix: &[Ident],
-    set: &AttrSet,
-) {
-    for entry in set.entries() {
-        let path = entry
-            .key()
-            .map(|attr_name| {
-                attr_name
-                    .path()
-                    .map(Ident::cast)
-                    .map(|segment| match segment {
-                        Some(s) => Ok(s),
-                        None => Err("not an identifier"),
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-                    .ok()
-            })
-            .unwrap_or_default();
-        let value_as_attrset = entry.value().and_then(AttrSet::cast);
+impl DefinitionPathSegment {
+    fn is_static(&self) -> bool {
+        match self {
+            Self::InterpolatedString(_) => false,
+            Self::Dynamic(_) => false,
+            _ => true,
+        }
+    }
 
-        if let Some(base_path) = path {
-            let path = vec![prefix, &base_path].concat();
-            let path_str = path
-                .iter()
-                .map(|ident| ident.as_str())
-                .collect::<Vec<_>>()
-                .join(".");
+    fn name(&self) -> Option<String> {
+        match self {
+            Self::Ident(i) => Some(i.as_str().to_owned()),
+            Self::Str(s) => match &s.parts()[0] {
+                StrPart::Literal(s) => Some(s.clone()),
+                _ => None,
+            },
+            Self::InterpolatedString(_) | Self::Dynamic(_) => None,
+        }
+    }
 
-            if let Some(value_as_attrset) = value_as_attrset.as_ref() {
-                populate_already_defined_from_attrset(already_defined, &path, value_as_attrset)
+    fn node(&self) -> &SyntaxNode {
+        match self {
+            Self::Ident(i) => i.node(),
+            Self::Str(s) => s.node(),
+            Self::InterpolatedString(s) => s.node(),
+            Self::Dynamic(d) => d.node(),
+        }
+    }
+
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        ParsedType::try_from(node).ok().and_then(|node| match node {
+            ParsedType::Ident(ident) => Some(Self::Ident(ident)),
+            ParsedType::Str(s) => {
+                let parts = s.parts();
+                let str_part = parts.get(0);
+                if parts.len() == 1 {
+                    if let Some(StrPart::Literal(_)) = str_part {
+                        return Some(Self::Str(s));
+                    }
+                }
+                Some(Self::InterpolatedString(s))
             }
-            already_defined.insert(path_str, (base_path, value_as_attrset));
+            ParsedType::Dynamic(dynamic) => Some(Self::Dynamic(dynamic)),
+            _ => None,
+        })
+    }
+}
+
+impl PartialEq for DefinitionPathSegment {
+    fn eq(&self, other: &Self) -> bool {
+        if let (Self::InterpolatedString(_), Self::InterpolatedString(_)) = (self, other) {
+            false
+        } else {
+            self.name() == other.name()
         }
     }
 }
 
-fn is_descendant_path(parent: &str, child: &str) -> bool {
-    parent.starts_with(&format!("{}.", child))
+#[derive(PartialEq, Clone)]
+struct DefinitionPath(Vec<DefinitionPathSegment>);
+
+impl DefinitionPath {
+    fn first(&self) -> Option<&DefinitionPathSegment> {
+        self.0.first()
+    }
+
+    fn last(&self) -> Option<&DefinitionPathSegment> {
+        self.0.last()
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &DefinitionPathSegment> {
+        self.0.iter()
+    }
+
+    fn parent(&self) -> Option<Self> {
+        let parent: Vec<_> = self
+            .0
+            .iter()
+            .cloned()
+            .take(self.0.len().saturating_sub(1))
+            .collect();
+        if parent.is_empty() {
+            None
+        } else {
+            Some(Self(parent))
+        }
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        let mut joined = self.0.clone();
+        joined.append(&mut other.0.clone());
+        Self(joined)
+    }
+
+    fn empty() -> Self {
+        DefinitionPath(vec![])
+    }
+
+    fn is_static(&self) -> bool {
+        self.0.iter().all(|segment| segment.is_static())
+    }
+
+    fn as_string(&self) -> String {
+        self.0
+            .iter()
+            .map(|v| v.name().unwrap_or_else(|| "<dynamic>".to_owned()))
+            .collect::<Vec<String>>()
+            .join(".")
+    }
+
+    fn from_key(key: Key) -> Self {
+        Self(key.path().filter_map(DefinitionPathSegment::cast).collect())
+    }
+
+    fn text_range(&self) -> Option<TextRange> {
+        let from = self.first()?;
+        let from = from.node().text_range().start();
+        let to = self.last()?;
+        let to = to.node().text_range().end();
+        Some(TextRange::from_to(from, to))
+    }
+}
+
+fn populate_definitions_from_entry_holder<T>(
+    definitions: &mut BTreeMap<String, Vec<(DefinitionPath, Option<AttrSet>)>>,
+    prefix: &DefinitionPath,
+    set: &T,
+) where
+    T: EntryHolder,
+{
+    for entry in set.entries() {
+        let path = entry.key().map(DefinitionPath::from_key);
+        if let Some(path) = path {
+            let path = prefix.join(&path);
+            let value_as_attrset = entry.value().and_then(AttrSet::cast);
+            let path_str = path.as_string();
+            let entry = definitions.entry(path_str).or_default();
+            entry.push((path.clone(), value_as_attrset.clone()));
+            if let Some(value_as_attrset) = value_as_attrset.as_ref() {
+                populate_definitions_from_entry_holder(definitions, &path, value_as_attrset)
+            }
+        }
+    }
+}
+
+fn insert_path_into_defines(
+    scope_kind: ScopeKind,
+    defines: &mut BTreeMap<String, DefinitionId>,
+    errors: &mut Vec<ScopeAnalysisError>,
+    arena: &mut Arena<Definition>,
+    definition: &DefinitionPath,
+) {
+    if definition.is_static() {
+        let value = definition
+            .first()
+            .expect("definition should have at least one element");
+        let name = value
+            .name()
+            .expect("first element of static definition should have a name");
+        if !defines.contains_key(&name) {
+            insert_into_defines(
+                scope_kind,
+                defines,
+                &name,
+                value.node().text_range(),
+                errors,
+                arena,
+            );
+        }
+    } else {
+        let value = definition.iter().take_while(|v| v.is_static()).next();
+        if let Some(value) = value {
+            let name = value.name().expect("static value should have a name");
+            if !defines.contains_key(&name) {
+                insert_into_defines(
+                    scope_kind,
+                    defines,
+                    &name,
+                    value.node().text_range(),
+                    errors,
+                    arena,
+                );
+            }
+        }
+    }
+}
+
+fn ensure_nested_paths(
+    scope_kind: ScopeKind,
+    definitions: &BTreeMap<String, Vec<(DefinitionPath, Option<AttrSet>)>>,
+    errors: &mut Vec<ScopeAnalysisError>,
+) {
+    for definition in definitions.values() {
+        let definition = definition
+            .first()
+            .expect("there should be at least one definition");
+        let mut outer_parent = definition.0.parent();
+        while let Some(parent) = outer_parent.as_ref() {
+            if parent.is_static() {
+                let parent_path_str = parent.as_string();
+
+                if let Some(parent_definitions) = definitions.get(&parent_path_str) {
+                    let (parent_definition, parent_attrset) = parent_definitions
+                        .first()
+                        .expect("there should be at least one parent definition");
+                    if parent_attrset.is_none() {
+                        errors.push(ScopeAnalysisError::AlreadyDefined(
+                            scope_kind,
+                            parent_path_str.clone(),
+                            parent
+                                .text_range()
+                                .expect("parent textrange should be a range"),
+                            parent_definition
+                                .last()
+                                .expect("parent definition should have at least one element")
+                                .node()
+                                .text_range(),
+                        ))
+                    }
+                }
+            }
+
+            outer_parent = parent.parent();
+        }
+    }
 }
 
 fn populate_from_entries<T>(
@@ -421,50 +613,34 @@ fn populate_from_entries<T>(
 ) where
     T: EntryHolder,
 {
-    let mut already_defined: BTreeMap<String, (Vec<Ident>, Option<AttrSet>)> = BTreeMap::new();
-    for entry in set.entries() {
-        let path = entry
-            .key()
-            .map(|attr_name| {
-                attr_name
-                    .path()
-                    .map(Ident::cast)
-                    .map(|segment| match segment {
-                        Some(s) => Ok(s),
-                        None => Err("not an identifier"),
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-                    .ok()
-            })
-            .unwrap_or_default();
-        let value_as_attrset = entry.value().and_then(AttrSet::cast);
+    let mut definitions: BTreeMap<String, Vec<(DefinitionPath, Option<AttrSet>)>> = BTreeMap::new();
 
-        if let Some(path) = path {
-            if let Some(ident) = path.get(0) {
-                let path_str: String = path
-                    .iter()
-                    .map(|i| i.as_str().to_owned())
-                    .collect::<Vec<String>>()
-                    .join(".");
-                if path.len() < 2 {
-                    insert_into_defines(scope_kind, defines, &ident, errors, arena);
-                    if let Some(value_as_attrset) = value_as_attrset.as_ref() {
-                        populate_already_defined_from_attrset(
-                            &mut already_defined,
-                            &path,
-                            value_as_attrset,
-                        )
-                    }
-                } else {
-                    let existing = already_defined.iter().find(|p| {
-                        p.0 == &path_str
-                            || is_descendant_path(p.0, &path_str) && value_as_attrset.is_none()
-                            || is_descendant_path(&path_str, p.0) && (p.1).1.is_none()
-                    });
-                    let ident_str = ident.as_str().to_owned();
-                    if let Some(existing) = existing {
-                        let text_range_error = get_path_text_range(&path);
-                        let text_range_definition = get_path_text_range(&(existing.1).0);
+    populate_definitions_from_entry_holder(&mut definitions, &DefinitionPath::empty(), set);
+
+    ensure_nested_paths(scope_kind, &definitions, errors);
+    for (path_str, value) in definitions.iter() {
+        match value.len() {
+            1 => {
+                let definition = &value[0].0;
+                insert_path_into_defines(scope_kind, defines, errors, arena, definition);
+            }
+            x if x > 1 => {
+                let definition = &value[0].0;
+
+                insert_path_into_defines(scope_kind, defines, errors, arena, definition);
+
+                if definition.is_static() {
+                    for duplicate_definition in value.iter().skip(1) {
+                        let text_range_error = duplicate_definition
+                            .0
+                            .text_range()
+                            .expect("duplicate definition should have a range");
+                        let text_range_definition = definition
+                            .0
+                            .last()
+                            .expect("existing path should not be empty")
+                            .node()
+                            .text_range();
 
                         errors.push(ScopeAnalysisError::AlreadyDefined(
                             scope_kind,
@@ -472,20 +648,10 @@ fn populate_from_entries<T>(
                             text_range_error,
                             text_range_definition,
                         ))
-                    } else if !defines.contains_key(&ident_str) {
-                        insert_into_defines(scope_kind, defines, &ident, errors, arena);
-                        if let Some(value_as_attrset) = value_as_attrset.as_ref() {
-                            populate_already_defined_from_attrset(
-                                &mut already_defined,
-                                &path,
-                                value_as_attrset,
-                            )
-                        }
                     }
                 }
-
-                already_defined.insert(path_str, (path, value_as_attrset));
             }
+            _ => {}
         }
     }
 }
@@ -621,8 +787,18 @@ mod tests {
     }
 
     #[test]
+    fn test_scope_let_in_single_variable_as_string() {
+        run_snapshot_test("let \"a\" = 1; in a")
+    }
+
+    #[test]
     fn test_scope_let_in_error_already_defined() {
         run_error_snapshot_test("let a = 1; a = 1; in a")
+    }
+
+    #[test]
+    fn test_scope_let_in_error_already_defined_as_string() {
+        run_error_snapshot_test("let a = 1; \"a\" = 1; in a")
     }
 
     #[test]
@@ -633,6 +809,11 @@ mod tests {
     #[test]
     fn test_scope_let_in_error_nested_already_defined() {
         run_error_snapshot_test("let a.b = 1; a.b = 1; in a")
+    }
+
+    #[test]
+    fn test_scope_let_in_error_nested_already_defined_as_string() {
+        run_error_snapshot_test("let a.\"b\" = 1; \"a\".b = 1; in a")
     }
 
     #[test]
@@ -661,6 +842,11 @@ mod tests {
     }
 
     #[test]
+    fn test_scope_let_in_error_nested_parent_already_defined_as_string() {
+        run_error_snapshot_test("let a.\"b\" = 1; \"a\".b.c = 1; in a")
+    }
+
+    #[test]
     fn test_scope_let_in_error_nested_attr_already_defined_in_parent() {
         run_error_snapshot_test("let a = { b = 1; }; a.b = 1; in a")
     }
@@ -676,6 +862,11 @@ mod tests {
     }
 
     #[test]
+    fn test_scope_let_in_error_inherit_already_defined_as_string() {
+        run_error_snapshot_test("let \"builtins\" = 2; inherit builtins; in builtins + builtins")
+    }
+
+    #[test]
     fn test_scope_let_in_inherit_from() {
         run_snapshot_test("let a.b = 1; inherit (a) b; in a.b + b")
     }
@@ -685,13 +876,19 @@ mod tests {
         run_error_snapshot_test("let a = 2; inherit (builtins) a; in a + a")
     }
 
+    #[ignore]
+    #[test]
+    fn test_scope_let_in_error_inherit_from_already_defined_as_string() {
+        run_error_snapshot_test("let \"a\" = 2; inherit (builtins) \"a\"; in a + a")
+    }
+
     #[test]
     fn test_scope_attr_set() {
         run_snapshot_test(
             "a: d: {
             a = 1;
             b = a;
-            c = 2;
+            \"c\" = 2;
             inherit d;
             inherit (d) e;
         }",
@@ -704,8 +901,20 @@ mod tests {
             "rec {
             a = 1;
             b = a;
-            c = 2;
+            \"c\" = 2;
         }",
+        )
+    }
+
+    #[test]
+    fn test_scope_attr_set_interpolated_paths() {
+        run_snapshot_test(
+            r#"a: b: {
+            "${a}".b = 1;
+            a."${b}" = 2;
+            a."${a}".e = 3;
+            a.${a}.f = 4;
+        }"#,
         )
     }
 
@@ -715,6 +924,17 @@ mod tests {
             "rec {
             a = 1;
             b = a;
+            b = 2;
+        }",
+        )
+    }
+
+    #[test]
+    fn test_scope_recursive_attr_set_error_already_defined_as_string() {
+        run_error_snapshot_test(
+            "rec {
+            a = 1;
+            \"b\" = a;
             b = 2;
         }",
         )

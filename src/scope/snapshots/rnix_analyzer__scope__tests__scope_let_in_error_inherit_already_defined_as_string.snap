@@ -6,9 +6,9 @@ expression: errors
     Scope(
         AlreadyDefined(
             LetIn,
-            "a.b",
-            [13; 16),
-            [6; 7),
+            "builtins",
+            [28; 36),
+            [4; 14),
         ),
     ),
 ]

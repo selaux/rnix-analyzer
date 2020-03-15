@@ -5,7 +5,7 @@ expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n
 a: d: {
             a = 1;
             b = a;
-            c = 2;
+            "c" = 2;
             inherit d;
             inherit (d) e;
         }
@@ -195,7 +195,7 @@ a: d: {
                 idx: 0,
             },
         },
-        text_range: [0; 124),
+        text_range: [0; 126),
     },
     Scope {
         id: Id {
@@ -207,7 +207,7 @@ a: d: {
                 idx: 16,
             },
         },
-        text_range: [0; 124),
+        text_range: [0; 126),
     },
     Scope {
         id: Id {
@@ -219,7 +219,7 @@ a: d: {
                 idx: 17,
             },
         },
-        text_range: [3; 124),
+        text_range: [3; 126),
     },
     Scope {
         id: Id {
@@ -243,7 +243,7 @@ a: d: {
                 idx: 22,
             },
         },
-        text_range: [6; 124),
+        text_range: [6; 126),
     },
 ]
 =========

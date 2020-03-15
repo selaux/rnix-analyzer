@@ -2,10 +2,11 @@
 source: src/scope/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code,\n        definitions, scopes, result . inverse_scope_tree ())"
 ---
-rec {
-            a = 1;
-            b = a;
-            "c" = 2;
+a: b: {
+            "${a}".b = 1;
+            a."${b}" = 2;
+            a."${a}".e = 3;
+            a.${a}.f = 4;
         }
 =========
 [
@@ -126,21 +127,14 @@ rec {
             idx: 16,
         },
         name: "a",
-        text_range: [18; 19),
+        text_range: [0; 1),
     },
     Definition {
         id: Id {
             idx: 17,
         },
         name: "b",
-        text_range: [37; 38),
-    },
-    Definition {
-        id: Id {
-            idx: 18,
-        },
-        name: "c",
-        text_range: [56; 59),
+        text_range: [3; 4),
     },
 ]
 =========
@@ -200,30 +194,77 @@ rec {
                 idx: 0,
             },
         },
-        text_range: [0; 74),
+        text_range: [0; 123),
     },
     Scope {
         id: Id {
             idx: 1,
         },
-        kind: RecursiveAttrSet,
+        kind: Lambda,
         defines: {
             "a": Id {
                 idx: 16,
             },
+        },
+        text_range: [0; 123),
+    },
+    Scope {
+        id: Id {
+            idx: 2,
+        },
+        kind: Lambda,
+        defines: {
             "b": Id {
                 idx: 17,
             },
-            "c": Id {
+        },
+        text_range: [3; 123),
+    },
+    Scope {
+        id: Id {
+            idx: 3,
+        },
+        kind: AttrSet,
+        defines: {
+            "a": Id {
                 idx: 18,
             },
         },
-        text_range: [0; 74),
+        text_range: [6; 123),
     },
 ]
 =========
 InverseScopeTree {
     leaf_scopes: [
+        ScopePath(
+            [
+                Id {
+                    idx: 3,
+                },
+                Id {
+                    idx: 2,
+                },
+                Id {
+                    idx: 1,
+                },
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
+        ScopePath(
+            [
+                Id {
+                    idx: 2,
+                },
+                Id {
+                    idx: 1,
+                },
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
         ScopePath(
             [
                 Id {

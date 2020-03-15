@@ -2,11 +2,7 @@
 source: src/scope/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code,\n        definitions, scopes, result . inverse_scope_tree ())"
 ---
-rec {
-            a = 1;
-            b = a;
-            "c" = 2;
-        }
+let "a" = 1; in a
 =========
 [
     Definition {
@@ -126,21 +122,7 @@ rec {
             idx: 16,
         },
         name: "a",
-        text_range: [18; 19),
-    },
-    Definition {
-        id: Id {
-            idx: 17,
-        },
-        name: "b",
-        text_range: [37; 38),
-    },
-    Definition {
-        id: Id {
-            idx: 18,
-        },
-        name: "c",
-        text_range: [56; 59),
+        text_range: [4; 7),
     },
 ]
 =========
@@ -200,25 +182,19 @@ rec {
                 idx: 0,
             },
         },
-        text_range: [0; 74),
+        text_range: [0; 17),
     },
     Scope {
         id: Id {
             idx: 1,
         },
-        kind: RecursiveAttrSet,
+        kind: LetIn,
         defines: {
             "a": Id {
                 idx: 16,
             },
-            "b": Id {
-                idx: 17,
-            },
-            "c": Id {
-                idx: 18,
-            },
         },
-        text_range: [0; 74),
+        text_range: [0; 17),
     },
 ]
 =========

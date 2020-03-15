@@ -7,8 +7,8 @@ expression: errors
         AlreadyDefined(
             LetIn,
             "a.b",
-            [13; 16),
-            [6; 7),
+            [15; 20),
+            [6; 9),
         ),
     ),
 ]
