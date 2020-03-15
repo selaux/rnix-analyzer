@@ -487,8 +487,13 @@ impl DefinitionPath {
             .join(".")
     }
 
-    fn from_key(key: Key) -> Self {
-        Self(key.path().filter_map(DefinitionPathSegment::cast).collect())
+    fn from_key(key: Key) -> Option<Self> {
+        let values: Vec<_> = key.path().filter_map(DefinitionPathSegment::cast).collect();
+        if values.is_empty() {
+            None
+        } else {
+            Some(Self(values))
+        }
     }
 
     fn text_range(&self) -> Option<TextRange> {
@@ -508,7 +513,7 @@ fn populate_definitions_from_entry_holder<T>(
     T: EntryHolder,
 {
     for entry in set.entries() {
-        let path = entry.key().map(DefinitionPath::from_key);
+        let path = entry.key().and_then(DefinitionPath::from_key);
         if let Some(path) = path {
             let path = prefix.join(&path);
             let value_as_attrset = entry.value().and_then(AttrSet::cast);
