@@ -597,6 +597,17 @@ fn ensure_nested_paths(
     }
 }
 
+fn sort_by_text_occurence(
+    mut definition: Vec<(DefinitionPath, Option<AttrSet>)>,
+) -> Vec<(DefinitionPath, Option<AttrSet>)> {
+    definition.sort_by(|a, b| {
+        a.0.text_range()
+            .map(|n| n.end())
+            .cmp(&b.0.text_range().map(|n| n.end()))
+    });
+    definition
+}
+
 fn populate_from_entries<T>(
     scope_kind: ScopeKind,
     set: &T,
@@ -618,6 +629,7 @@ fn populate_from_entries<T>(
                 insert_path_into_defines(scope_kind, defines, errors, arena, definition);
             }
             x if x > 1 => {
+                let value = sort_by_text_occurence(value.clone());
                 let definition = &value[0].0;
 
                 insert_path_into_defines(scope_kind, defines, errors, arena, definition);
@@ -852,6 +864,11 @@ mod tests {
     #[test]
     fn test_scope_let_in_error_inherit_already_defined() {
         run_error_snapshot_test("let builtins = 2; inherit builtins; in builtins + builtins")
+    }
+
+    #[test]
+    fn test_scope_let_in_error_inherit_already_defined_order_for_inherit() {
+        run_error_snapshot_test("let inherit builtins; builtins = 2; in builtins + builtins")
     }
 
     #[test]

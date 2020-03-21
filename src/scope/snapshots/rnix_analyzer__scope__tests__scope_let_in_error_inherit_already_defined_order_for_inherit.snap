@@ -1,0 +1,16 @@
+---
+source: src/scope/mod.rs
+expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+---
+let inherit builtins; builtins = 2; in builtins + builtins
+=========
+[
+    Scope(
+        AlreadyDefined(
+            LetIn,
+            "builtins",
+            [22; 30),
+            [12; 20),
+        ),
+    ),
+]
