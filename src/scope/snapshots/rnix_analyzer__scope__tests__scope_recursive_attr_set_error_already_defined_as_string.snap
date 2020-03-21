@@ -1,7 +1,13 @@
 ---
 source: src/scope/mod.rs
-expression: errors
+expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
 ---
+rec {
+            a = 1;
+            "b" = a;
+            b = 2;
+        }
+=========
 [
     Scope(
         AlreadyDefined(

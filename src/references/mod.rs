@@ -261,7 +261,7 @@ impl<'a, 'b> CollectFromTree<TrackReferencesDependencies<'a, 'b>> for TrackRefer
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use crate::{AnalysisError, AnalysisResult};
-    use insta::{assert_debug_snapshot, assert_display_snapshot};
+    use insta::assert_display_snapshot;
     use std::process::Command;
     use std::str;
 
@@ -375,6 +375,6 @@ mod tests {
         assert_eq!(parse_result.errors(), vec![]);
         let result = AnalysisResult::from(&parse_result);
         let errors: Vec<AnalysisError> = result.errors().cloned().collect();
-        assert_debug_snapshot!(errors);
+        assert_display_snapshot!(format!("{}\n=========\n{:#?}", nix_code, errors));
     }
 }

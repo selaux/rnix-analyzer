@@ -1,7 +1,9 @@
 ---
 source: src/scope/mod.rs
-expression: errors
+expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
 ---
+let builtins = 2; inherit builtins; in builtins + builtins
+=========
 [
     Scope(
         AlreadyDefined(
