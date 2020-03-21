@@ -1,0 +1,272 @@
+---
+source: src/scope/mod.rs
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code,\n        definitions, scopes, result . inverse_scope_tree ())"
+---
+rec {
+            a = 1;
+            b = a;
+            "c" = {
+                inherit a;
+            };
+        }
+=========
+[
+    Definition {
+        id: Id {
+            idx: 0,
+        },
+        name: "true",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 1,
+        },
+        name: "false",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 2,
+        },
+        name: "null",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 3,
+        },
+        name: "throw",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 4,
+        },
+        name: "abort",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 5,
+        },
+        name: "baseNameOf",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 6,
+        },
+        name: "builtins",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 7,
+        },
+        name: "derivation",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 8,
+        },
+        name: "dirOf",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 9,
+        },
+        name: "fetchTarball",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 10,
+        },
+        name: "import",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 11,
+        },
+        name: "isNull",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 12,
+        },
+        name: "map",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 13,
+        },
+        name: "placeholder",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 14,
+        },
+        name: "removeAttrs",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 15,
+        },
+        name: "toString",
+        text_range: [0; 0),
+    },
+    Definition {
+        id: Id {
+            idx: 16,
+        },
+        name: "a",
+        text_range: [18; 19),
+    },
+    Definition {
+        id: Id {
+            idx: 17,
+        },
+        name: "b",
+        text_range: [37; 38),
+    },
+    Definition {
+        id: Id {
+            idx: 18,
+        },
+        name: "c",
+        text_range: [56; 59),
+    },
+]
+=========
+[
+    Scope {
+        id: Id {
+            idx: 0,
+        },
+        kind: Root,
+        defines: {
+            "abort": Id {
+                idx: 4,
+            },
+            "baseNameOf": Id {
+                idx: 5,
+            },
+            "builtins": Id {
+                idx: 6,
+            },
+            "derivation": Id {
+                idx: 7,
+            },
+            "dirOf": Id {
+                idx: 8,
+            },
+            "false": Id {
+                idx: 1,
+            },
+            "fetchTarball": Id {
+                idx: 9,
+            },
+            "import": Id {
+                idx: 10,
+            },
+            "isNull": Id {
+                idx: 11,
+            },
+            "map": Id {
+                idx: 12,
+            },
+            "null": Id {
+                idx: 2,
+            },
+            "placeholder": Id {
+                idx: 13,
+            },
+            "removeAttrs": Id {
+                idx: 14,
+            },
+            "throw": Id {
+                idx: 3,
+            },
+            "toString": Id {
+                idx: 15,
+            },
+            "true": Id {
+                idx: 0,
+            },
+        },
+        text_range: [0; 115),
+    },
+    Scope {
+        id: Id {
+            idx: 1,
+        },
+        kind: RecursiveAttrSet,
+        defines: {
+            "a": Id {
+                idx: 16,
+            },
+            "b": Id {
+                idx: 17,
+            },
+            "c": Id {
+                idx: 18,
+            },
+        },
+        text_range: [0; 115),
+    },
+    Scope {
+        id: Id {
+            idx: 2,
+        },
+        kind: AttrSet,
+        defines: {
+            "a": Id {
+                idx: 19,
+            },
+        },
+        text_range: [62; 104),
+    },
+]
+=========
+InverseScopeTree {
+    leaf_scopes: [
+        ScopePath(
+            [
+                Id {
+                    idx: 2,
+                },
+                Id {
+                    idx: 1,
+                },
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
+        ScopePath(
+            [
+                Id {
+                    idx: 1,
+                },
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
+        ScopePath(
+            [
+                Id {
+                    idx: 0,
+                },
+            ],
+        ),
+    ],
+}

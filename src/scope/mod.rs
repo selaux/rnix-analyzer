@@ -365,6 +365,7 @@ fn populate_definitions_from_entry_holder<T>(
     for inherit in set.inherits() {
         for ident in inherit.idents() {
             let path = DefinitionPath::from_ident(ident);
+            let path = prefix.join(&path);
             let path_str = path.as_string();
             let value_as_attrset = None;
 
@@ -769,6 +770,33 @@ mod tests {
             a = 1;
             b = a;
             \"c\" = 2;
+        }",
+        )
+    }
+
+    #[test]
+    fn test_scope_recursive_attr_set_with_nested_inherit() {
+        run_snapshot_test(
+            "rec {
+            a = 1;
+            b = a;
+            \"c\" = {
+                inherit a;
+            };
+        }",
+        )
+    }
+
+    #[test]
+    fn test_scope_recursive_attr_set_error_alread_defined_inherit() {
+        run_error_snapshot_test(
+            "a: rec {
+            a = 1;
+            inherit a;
+            c.a = 2;
+            \"c\" = {
+                inherit a;
+            };
         }",
         )
     }

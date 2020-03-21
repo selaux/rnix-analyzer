@@ -1,0 +1,31 @@
+---
+source: src/scope/mod.rs
+expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+---
+a: rec {
+            a = 1;
+            inherit a;
+            c.a = 2;
+            "c" = {
+                inherit a;
+            };
+        }
+=========
+[
+    Scope(
+        AlreadyDefined(
+            RecursiveAttrSet,
+            "a",
+            [48; 49),
+            [21; 22),
+        ),
+    ),
+    Scope(
+        AlreadyDefined(
+            RecursiveAttrSet,
+            "c.a",
+            [84; 117),
+            [65; 66),
+        ),
+    ),
+]
