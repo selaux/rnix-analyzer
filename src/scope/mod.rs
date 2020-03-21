@@ -225,20 +225,6 @@ impl DefinesScope for LetIn {
             errors,
             definition_arena,
         );
-        for inherit in self.inherits() {
-            for ident in inherit.idents() {
-                let ident_str = ident.as_str().to_owned();
-
-                insert_into_defines(
-                    ScopeKind::LetIn,
-                    &mut defines,
-                    &ident_str,
-                    ident.node().text_range(),
-                    errors,
-                    definition_arena,
-                );
-            }
-        }
 
         scope_arena.alloc_with_id(|id| Scope {
             id,
@@ -263,19 +249,7 @@ impl DefinesScope for AttrSet {
             ScopeKind::AttrSet
         };
         populate_from_entries(scope_kind, self, &mut defines, errors, definition_arena);
-        for inherit in self.inherits() {
-            for ident in inherit.idents() {
-                let ident_str = ident.as_str().to_owned();
-                insert_into_defines(
-                    ScopeKind::LetIn,
-                    &mut defines,
-                    &ident_str,
-                    ident.node().text_range(),
-                    errors,
-                    definition_arena,
-                );
-            }
-        }
+
         scope_arena.alloc_with_id(|id| Scope {
             id,
             kind: scope_kind,
@@ -487,6 +461,10 @@ impl DefinitionPath {
             .join(".")
     }
 
+    fn from_ident(key: Ident) -> Self {
+        Self(vec![DefinitionPathSegment::Ident(key)])
+    }
+
     fn from_key(key: Key) -> Option<Self> {
         let values: Vec<_> = key.path().filter_map(DefinitionPathSegment::cast).collect();
         if values.is_empty() {
@@ -523,6 +501,16 @@ fn populate_definitions_from_entry_holder<T>(
             if let Some(value_as_attrset) = value_as_attrset.as_ref() {
                 populate_definitions_from_entry_holder(definitions, &path, value_as_attrset)
             }
+        }
+    }
+    for inherit in set.inherits() {
+        for ident in inherit.idents() {
+            let path = DefinitionPath::from_ident(ident);
+            let path_str = path.as_string();
+            let value_as_attrset = None;
+
+            let entry = definitions.entry(path_str).or_default();
+            entry.push((path.clone(), value_as_attrset.clone()));
         }
     }
 }
