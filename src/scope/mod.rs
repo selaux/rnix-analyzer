@@ -1,18 +1,17 @@
 use crate::{utils::Stack, CollectFromTree};
 use id_arena::{Arena, Id as ArenaId};
 use rnix::{
-    types::{
-        AttrSet, Dynamic, EntryHolder, Ident, Key, Lambda, LetIn, ParsedType, Str, TokenWrapper,
-        TypedNode, With,
-    },
-    value::StrPart,
-    SyntaxKind, SyntaxNode, TextRange, TextUnit,
+    types::{AttrSet, EntryHolder, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With},
+    SyntaxKind, TextRange, TextUnit,
 };
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
+mod definition_path;
 pub mod tree;
 pub use tree::*;
+
+use definition_path::*;
 
 /// Unique Id of a definition
 pub type DefinitionId = ArenaId<Definition>;
@@ -343,146 +342,6 @@ fn insert_into_defines(
     }
 }
 
-#[derive(Clone)]
-pub enum DefinitionPathSegment {
-    Ident(Ident),
-    Str(Str),
-    InterpolatedString(Str),
-    Dynamic(Dynamic),
-}
-
-impl DefinitionPathSegment {
-    fn is_static(&self) -> bool {
-        match self {
-            Self::InterpolatedString(_) => false,
-            Self::Dynamic(_) => false,
-            _ => true,
-        }
-    }
-
-    fn name(&self) -> Option<String> {
-        match self {
-            Self::Ident(i) => Some(i.as_str().to_owned()),
-            Self::Str(s) => match &s.parts()[0] {
-                StrPart::Literal(s) => Some(s.clone()),
-                _ => None,
-            },
-            Self::InterpolatedString(_) | Self::Dynamic(_) => None,
-        }
-    }
-
-    fn node(&self) -> &SyntaxNode {
-        match self {
-            Self::Ident(i) => i.node(),
-            Self::Str(s) => s.node(),
-            Self::InterpolatedString(s) => s.node(),
-            Self::Dynamic(d) => d.node(),
-        }
-    }
-
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        ParsedType::try_from(node).ok().and_then(|node| match node {
-            ParsedType::Ident(ident) => Some(Self::Ident(ident)),
-            ParsedType::Str(s) => {
-                let parts = s.parts();
-                let str_part = parts.get(0);
-                if parts.len() == 1 {
-                    if let Some(StrPart::Literal(_)) = str_part {
-                        return Some(Self::Str(s));
-                    }
-                }
-                Some(Self::InterpolatedString(s))
-            }
-            ParsedType::Dynamic(dynamic) => Some(Self::Dynamic(dynamic)),
-            _ => None,
-        })
-    }
-}
-
-impl PartialEq for DefinitionPathSegment {
-    fn eq(&self, other: &Self) -> bool {
-        if let (Self::InterpolatedString(_), Self::InterpolatedString(_)) = (self, other) {
-            false
-        } else {
-            self.name() == other.name()
-        }
-    }
-}
-
-#[derive(PartialEq, Clone)]
-struct DefinitionPath(Vec<DefinitionPathSegment>);
-
-impl DefinitionPath {
-    fn first(&self) -> Option<&DefinitionPathSegment> {
-        self.0.first()
-    }
-
-    fn last(&self) -> Option<&DefinitionPathSegment> {
-        self.0.last()
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &DefinitionPathSegment> {
-        self.0.iter()
-    }
-
-    fn parent(&self) -> Option<Self> {
-        let parent: Vec<_> = self
-            .0
-            .iter()
-            .cloned()
-            .take(self.0.len().saturating_sub(1))
-            .collect();
-        if parent.is_empty() {
-            None
-        } else {
-            Some(Self(parent))
-        }
-    }
-
-    fn join(&self, other: &Self) -> Self {
-        let mut joined = self.0.clone();
-        joined.append(&mut other.0.clone());
-        Self(joined)
-    }
-
-    fn empty() -> Self {
-        DefinitionPath(vec![])
-    }
-
-    fn is_static(&self) -> bool {
-        self.0.iter().all(|segment| segment.is_static())
-    }
-
-    fn as_string(&self) -> String {
-        self.0
-            .iter()
-            .map(|v| v.name().unwrap_or_else(|| "<dynamic>".to_owned()))
-            .collect::<Vec<String>>()
-            .join(".")
-    }
-
-    fn from_ident(key: Ident) -> Self {
-        Self(vec![DefinitionPathSegment::Ident(key)])
-    }
-
-    fn from_key(key: Key) -> Option<Self> {
-        let values: Vec<_> = key.path().filter_map(DefinitionPathSegment::cast).collect();
-        if values.is_empty() {
-            None
-        } else {
-            Some(Self(values))
-        }
-    }
-
-    fn text_range(&self) -> Option<TextRange> {
-        let from = self.first()?;
-        let from = from.node().text_range().start();
-        let to = self.last()?;
-        let to = to.node().text_range().end();
-        Some(TextRange::from_to(from, to))
-    }
-}
-
 fn populate_definitions_from_entry_holder<T>(
     definitions: &mut BTreeMap<String, Vec<(DefinitionPath, Option<AttrSet>)>>,
     prefix: &DefinitionPath,
@@ -641,7 +500,6 @@ fn populate_from_entries<T>(
                             .text_range()
                             .expect("duplicate definition should have a range");
                         let text_range_definition = definition
-                            .0
                             .last()
                             .expect("existing path should not be empty")
                             .node()
