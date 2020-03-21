@@ -1,14 +1,14 @@
+use crate::utils::Stack;
 use rnix::SyntaxNode;
-use std::collections::VecDeque;
 
 pub(crate) trait CollectFromTree<D> {
     type State;
     type Result;
     type Error;
 
-    fn enter_node(&mut self, dependencies: D, node: &rnix::SyntaxNode);
+    fn enter_node(&mut self, dependencies: D, node: &SyntaxNode);
 
-    fn exit_node(&mut self, dependencies: D, node: &rnix::SyntaxNode);
+    fn exit_node(&mut self, dependencies: D, node: &SyntaxNode);
 
     fn state(&self) -> &Self::State;
 
@@ -17,7 +17,7 @@ pub(crate) trait CollectFromTree<D> {
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub(crate) struct TrackParent {
-    pub(crate) state: VecDeque<SyntaxNode>,
+    pub(crate) state: Stack<SyntaxNode>,
 }
 
 impl TrackParent {
@@ -27,7 +27,7 @@ impl TrackParent {
 }
 
 impl CollectFromTree<()> for TrackParent {
-    type State = VecDeque<SyntaxNode>;
+    type State = Stack<SyntaxNode>;
     type Result = ();
     type Error = ();
 

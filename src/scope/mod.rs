@@ -1,4 +1,4 @@
-use crate::CollectFromTree;
+use crate::{utils::Stack, CollectFromTree};
 use id_arena::{Arena, Id as ArenaId};
 use rnix::{
     types::{
@@ -8,7 +8,7 @@ use rnix::{
     value::StrPart,
     SyntaxKind, SyntaxNode, TextRange, TextUnit,
 };
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
 pub mod tree;
@@ -673,7 +673,7 @@ pub(crate) struct TrackScopesState {
     pub(crate) definition_arena: Arena<Definition>,
     pub(crate) scope_arena: Arena<Scope>,
     pub(crate) root_scope: ScopeId,
-    pub(crate) current_scopes: VecDeque<Scope>,
+    pub(crate) current_scopes: Stack<Scope>,
     pub(crate) errors: Vec<ScopeAnalysisError>,
 }
 
@@ -701,7 +701,7 @@ impl TrackScopes {
                 definition_arena,
                 scope_arena,
                 root_scope,
-                current_scopes: VecDeque::from(current_scopes),
+                current_scopes: Stack::from(current_scopes),
                 errors,
             },
         }
@@ -770,7 +770,6 @@ impl CollectFromTree<()> for TrackScopes {
 
 #[cfg(test)]
 mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use crate::{AnalysisError, AnalysisResult};
     use insta::assert_display_snapshot;
     use std::process::Command;

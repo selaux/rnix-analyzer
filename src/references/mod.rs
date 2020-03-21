@@ -1,9 +1,8 @@
-use crate::CollectFromTree;
-use crate::{DefinitionId, Scope, ScopeKind};
+use crate::{utils::Stack, CollectFromTree, DefinitionId, Scope, ScopeKind};
 use id_arena::{Arena, Id as ArenaId};
 use rnix::types::{BinOp, BinOpKind, Ident, Inherit, Select, TokenWrapper, TypedNode};
 use rnix::{SyntaxKind, SyntaxNode, TextRange};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 pub type VariableId = ArenaId<Variable>;
 
@@ -39,9 +38,9 @@ pub struct References {
 }
 
 fn filter_identifier(
-    parents: &VecDeque<SyntaxNode>,
-    in_scopes: &VecDeque<Scope>,
-    in_select: &VecDeque<Select>,
+    parents: &Stack<SyntaxNode>,
+    in_scopes: &Stack<Scope>,
+    in_select: &Stack<Select>,
     node: &SyntaxNode,
 ) -> bool {
     let last_four_parents: Vec<_> = (1..4).map(|v| parents.get(v)).collect();
@@ -150,14 +149,14 @@ impl References {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) struct TrackReferencesDependencies<'a, 'b> {
-    parents: &'a VecDeque<SyntaxNode>,
-    current_scopes: &'b VecDeque<Scope>,
+    parents: &'a Stack<SyntaxNode>,
+    current_scopes: &'b Stack<Scope>,
 }
 
 impl TrackReferencesDependencies<'_, '_> {
     pub fn new<'a, 'b>(
-        parents: &'a VecDeque<SyntaxNode>,
-        current_scopes: &'b VecDeque<Scope>,
+        parents: &'a Stack<SyntaxNode>,
+        current_scopes: &'b Stack<Scope>,
     ) -> TrackReferencesDependencies<'a, 'b> {
         TrackReferencesDependencies {
             parents,
@@ -171,7 +170,7 @@ pub(crate) struct TrackReferencesState {
     variable_arena: Arena<Variable>,
     references: BTreeMap<VariableId, Reference>,
     errors: Vec<ReferenceError>,
-    in_select: VecDeque<Select>,
+    in_select: Stack<Select>,
 }
 
 #[derive(Clone, Default)]
