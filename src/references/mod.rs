@@ -167,10 +167,10 @@ impl TrackReferencesDependencies<'_, '_> {
 
 #[derive(Clone, Default)]
 pub(crate) struct TrackReferencesState {
-    variable_arena: Arena<Variable>,
-    references: BTreeMap<VariableId, Reference>,
-    errors: Vec<ReferenceError>,
-    in_select: Stack<Select>,
+    pub(crate) variable_arena: Arena<Variable>,
+    pub(crate) references: BTreeMap<VariableId, Reference>,
+    pub(crate) errors: Vec<ReferenceError>,
+    pub(crate) in_select: Stack<Select>,
 }
 
 #[derive(Clone, Default)]

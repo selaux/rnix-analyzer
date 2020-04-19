@@ -21,8 +21,16 @@ impl<T> Stack<T> {
         self.iter().nth(index)
     }
 
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        self.iter_mut().nth(index)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.0.iter().rev()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.0.iter_mut().rev()
     }
 }
 

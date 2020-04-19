@@ -1,0 +1,7 @@
+---
+source: src/types/mod.rs
+expression: "format!(\"{}\\n=========\\n{}\", nix_code, description)"
+---
+1
+=========
+int

@@ -4,6 +4,7 @@ pub use rnix::{TextRange, TextUnit, AST};
 
 pub mod references;
 pub mod scope;
+pub mod types;
 pub mod utils;
 
 use references::References;
@@ -12,6 +13,8 @@ use scope::Scopes;
 pub use scope::{
     Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
 };
+use types::Types;
+pub use types::{NixType, TypeId};
 use utils::{CollectFromTree, TrackParent};
 
 /// Error that occured during code analysis
@@ -40,6 +43,7 @@ impl From<&ReferenceError> for AnalysisError {
 pub struct AnalysisResult {
     pub(crate) scopes: Scopes,
     pub(crate) references: References,
+    pub(crate) types: Types,
     errors: Vec<AnalysisError>,
 }
 
@@ -49,6 +53,7 @@ impl AnalysisResult {
         let mut track_parents = TrackParent::new();
         let mut scopes = scope::TrackScopes::new(ast);
         let mut references = references::TrackReferences::new();
+        let mut types = types::TrackTypes::new();
         for walk_event in ast.node().preorder() {
             match walk_event {
                 WalkEvent::Enter(node) => {
@@ -56,19 +61,31 @@ impl AnalysisResult {
                     scopes.enter_node((), &node);
                     let parents = track_parents.state();
                     let scope_state = scopes.state();
-                    let deps = references::TrackReferencesDependencies::new(
+                    let reference_deps = references::TrackReferencesDependencies::new(
                         &parents,
                         &scope_state.current_scopes,
                     );
-                    references.enter_node(deps, &node);
+                    references.enter_node(reference_deps, &node);
+                    let references_state = references.state();
+                    let types_deps = types::TrackTypesDependencies::new(
+                        &references_state.references,
+                        &scope_state.current_scopes,
+                    );
+                    types.enter_node(types_deps, &node);
                 }
                 WalkEvent::Leave(node) => {
                     let parents = track_parents.state();
                     let scope_state = scopes.state();
+                    let references_state = references.state();
+                    let types_deps = types::TrackTypesDependencies::new(
+                        &references_state.references,
+                        &scope_state.current_scopes,
+                    );
                     let deps = references::TrackReferencesDependencies::new(
                         &parents,
                         &scope_state.current_scopes,
                     );
+                    types.exit_node(types_deps, &node);
                     references.exit_node(deps, &node);
                     scopes.exit_node((), &node);
                     track_parents.exit_node((), &node);
@@ -77,6 +94,7 @@ impl AnalysisResult {
         }
         let (scopes, scope_errors) = scopes.result();
         let (references, reference_errors) = references.result();
+        let (types, _) = types.result();
         let errors: Vec<_> = scope_errors
             .iter()
             .map(AnalysisError::from)
@@ -85,6 +103,7 @@ impl AnalysisResult {
         AnalysisResult {
             scopes,
             references,
+            types,
             errors,
         }
     }
@@ -180,6 +199,21 @@ impl AnalysisResult {
     /// ```
     pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
         self.scopes.scopes_at(range)
+    }
+
+    /// TODO: Docs
+    pub fn nixtype_description(&self, type_id: &TypeId) -> Option<String> {
+        self.types.nixtype_description(type_id)
+    }
+
+    /// TODO: Docs
+    pub fn nixtype(&self, type_id: &TypeId) -> Option<&NixType> {
+        self.types.nixtype(type_id)
+    }
+
+    /// TODO: Docs
+    pub fn export_nixtype(&self) -> &TypeId {
+        self.types.export_nixtype()
     }
 
     /// Returns a variable by id
