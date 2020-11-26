@@ -5,8 +5,9 @@ authors = ["Stefan Lau <github@stefanlau.com>"]
 edition = "2018"
 
 [dependencies]
-rnix = { git = "https://github.com/selaux/rnix-parser.git", rev = "5ecbe37caca55d129a00345527b77e0ae824da34" }
+rnix = { git = "https://github.com/nix-community/rnix-parser.git", rev = "d0d195592b565a45a20e96b9bddebb432b556c47" }
 id-arena = "2.2"
+log = "0.4.11"
 
 [dev-dependencies]
 insta = "0.13.1"

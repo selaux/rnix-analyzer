@@ -3,7 +3,7 @@ use id_arena::{Arena, Id as ArenaId};
 use rnix::{types::ParsedType, value::Value, SyntaxKind};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::convert::TryFrom;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::iter::FromIterator;
 
 mod base;
@@ -25,7 +25,7 @@ pub enum NixType {
     Boolean,
     Null,
     List(TypeId),
-    Set {
+    AttrSet {
         attrs: BTreeMap<String, TypeId>,
         exhaustive: bool,
     },
@@ -64,7 +64,7 @@ impl NixType {
                 v.join(" | ")
             }
             // TODO
-            NixType::Set { .. } => "set()".to_owned(),
+            NixType::AttrSet { .. } => "set()".to_owned(),
             NixType::Lambda { .. } => "lambda()".to_owned(),
         }
     }
@@ -223,9 +223,25 @@ impl<'a, 'b> CollectFromTree<TrackTypesDependencies<'a, 'b>> for TrackTypes {
                     };
                     state.get_or_insert_type(NixType::List(type_id))
                 }
-                _ => unreachable!(),
+                c => {
+                    log::warn!("Exited list node, but found non-list-context: {:?}, returning list(unknown) type", c);
+                    state.get_or_insert_type(NixType::List(state.base_types.unknown))
+                }
             },
-            _ => unreachable!(),
+            Ok(_) => {
+                log::warn!(
+                    "Found non-inferrable node {:?}, returning unknown type",
+                    node
+                );
+                state.base_types.unknown
+            }
+            Err(_) => {
+                log::warn!(
+                    "Error parsing into ParsedType for node {:?}, returning unknown type",
+                    node
+                );
+                state.base_types.unknown
+            }
         };
         let current_type = &state.type_arena[current_type_id];
         let parent_context = state.contexts.get_mut(0);
