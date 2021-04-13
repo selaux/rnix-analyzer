@@ -9,9 +9,9 @@ pub mod utils;
 
 use references::References;
 pub use references::{Reference, ReferenceError, Variable, VariableId};
-use scope::Scopes;
+use scope::{Scopes, DefinitionId};
 pub use scope::{
-    Definition, DefinitionId, InverseScopeTree, Scope, ScopeAnalysisError, ScopeId, ScopeKind,
+    Definition, InverseScopeTree, Scope, ScopeAnalysisError, ScopeKind,
 };
 use types::Types;
 pub use types::{NixType, TypeId};
@@ -127,11 +127,11 @@ impl AnalysisResult {
     /// let analysis = AnalysisResult::from(&ast);
     ///
     /// // This is a definition in a let binding
-    /// assert!(analysis.definitions().find(|d| d.name == "foo").is_some());
+    /// assert!(analysis.definitions().find(|d| d.name() == "foo").is_some());
     /// // This is a definition that is defined by nix itself
-    /// assert!(analysis.definitions().find(|d| d.name == "builtins").is_some());
+    /// assert!(analysis.definitions().find(|d| d.name() == "builtins").is_some());
     /// // This does not exist
-    /// assert!(analysis.definitions().find(|d| d.name == "bar").is_none());
+    /// assert!(analysis.definitions().find(|d| d.name() == "bar").is_none());
     /// ```
     pub fn definitions(&self) -> impl Iterator<Item = &Definition> {
         self.scopes.definitions()
@@ -149,7 +149,7 @@ impl AnalysisResult {
     ///     TextUnit::from(17)
     /// )).next().unwrap();
     ///
-    /// assert_eq!(analysis.definition_of(&foo).unwrap().text_range, TextRange::from_to(
+    /// assert_eq!(analysis.definition_of(&foo).unwrap().text_range(), TextRange::from_to(
     ///     TextUnit::from(4),
     ///     TextUnit::from(7)
     /// ));
@@ -158,11 +158,6 @@ impl AnalysisResult {
         self.references
             .definition_of(variable)
             .and_then(|id| self.scopes.definition(id))
-    }
-
-    /// Returns a scope by id
-    pub fn scope(&self, scope_id: &ScopeId) -> Option<&Scope> {
-        self.scopes.scope(scope_id)
     }
 
     /// Returns all scopes encountered in the code, including the root scope
@@ -281,7 +276,7 @@ impl AnalysisResult {
     /// ]);
     /// ```
     pub fn variables_for(&self, definition: &Definition) -> impl Iterator<Item = &Variable> {
-        self.references.variables_for(&definition.id)
+        self.references.variables_for(&definition.id())
     }
 
     /// Returns the inverse scope tree

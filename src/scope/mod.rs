@@ -1,5 +1,5 @@
 use crate::{utils::Stack, CollectFromTree};
-use id_arena::{Arena, Id as ArenaId};
+use id_arena::{Arena};
 use rnix::{
     types::{AttrSet, EntryHolder, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With},
     SyntaxKind, TextRange, TextUnit,
@@ -7,41 +7,27 @@ use rnix::{
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
+mod definition;
 mod definition_path;
-pub mod tree;
-pub use tree::*;
+mod scope;
+mod tree;
 
 use definition_path::*;
-
-/// Unique Id of a definition
-pub type DefinitionId = ArenaId<Definition>;
-
-/// A definition of a variable inside a Scope
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Definition {
-    // Unique id of the definition
-    pub id: DefinitionId,
-    // name
-    pub name: String,
-    // location of the definition
-    pub text_range: TextRange,
-}
+pub use definition::*;
+pub use scope::*;
+pub use tree::*;
 
 fn insert_root_definition(
-    arena: &mut Arena<Definition>,
+    arena: &mut DefinitionArena,
     name: &str,
     defines: &mut BTreeMap<String, DefinitionId>,
 ) {
-    let definition_id = arena.alloc_with_id(|id| Definition {
-        id,
-        name: name.to_owned(),
-        text_range: TextRange::from_to(TextUnit::from(0), TextUnit::from(0)),
-    });
-    defines.insert(name.to_owned(), definition_id);
+    let definition = Definition::new_in_arena(arena, name, TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
+    defines.insert(name.to_owned(), definition.id());
 }
 
-// Returns the defines of the root node
-pub fn root_defines(arena: &mut Arena<Definition>) -> BTreeMap<String, DefinitionId> {
+/// Returns the defines of the root node
+fn root_defines(arena: &mut DefinitionArena) -> BTreeMap<String, DefinitionId> {
     let mut defines = BTreeMap::new();
 
     insert_root_definition(arena, "true", &mut defines);
@@ -64,23 +50,6 @@ pub fn root_defines(arena: &mut Arena<Definition>) -> BTreeMap<String, Definitio
     defines
 }
 
-/// The kind of scope that is defined
-#[derive(Debug, PartialEq, Clone, Copy, Hash)]
-pub enum ScopeKind {
-    /// The root scope at the top of the file, defines builtins
-    Root,
-    /// A scope defined with `with a;`
-    With,
-    /// At scope defined with `let a = 1; in ...`
-    LetIn,
-    /// A scope defined by `{ a = 1; }`
-    AttrSet,
-    /// A scope defined by `rec { a = 1; }`
-    RecursiveAttrSet,
-    /// A scope defined by `a: a`
-    Lambda,
-}
-
 /// Any error that occurs while analyzing scopes
 #[derive(Debug, PartialEq, Clone)]
 pub enum ScopeAnalysisError {
@@ -90,46 +59,10 @@ pub enum ScopeAnalysisError {
     AlreadyDefined(ScopeKind, String, TextRange, TextRange),
 }
 
-/// Unique Id of a scope
-pub type ScopeId = ArenaId<Scope>;
-
-/// Scope refers to anything that defines a set of variables or attributes.
-///
-/// It is a superset of lexical nix scopes that includes attribute set scopes that do not use `rec`.
-#[derive(Debug, PartialEq, Clone)]
-pub struct Scope {
-    pub id: ScopeId,
-    pub kind: ScopeKind,
-    defines: BTreeMap<String, DefinitionId>,
-    pub text_range: TextRange,
-}
-
-impl Scope {
-    /// Get definitions in this scope
-    pub fn definitions(&self) -> impl Iterator<Item = &DefinitionId> {
-        let simple_attrset = self.kind == ScopeKind::AttrSet;
-        self.defines.values().filter(move |_| !simple_attrset)
-    }
-    /// Get a definition by name in this scope (not including parent scopes).
-    pub fn definition(&self, name: &str) -> Option<&DefinitionId> {
-        if self.kind == ScopeKind::AttrSet {
-            return None;
-        }
-        self.defines.get(name)
-    }
-
-    /// Returns true if the scope is able to define all its definitions
-    ///
-    /// This is false e.g. for `with`, as we cannot determine all variable names
-    pub fn is_exhaustive(&self) -> bool {
-        self.kind != ScopeKind::With
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scopes {
-    definition_arena: Arena<Definition>,
-    scope_arena: Arena<Scope>,
+    definition_arena: DefinitionArena,
+    scope_arena: ScopeArena,
     scope_tree: InverseScopeTree,
     root_scope: ScopeId,
 }
@@ -164,7 +97,7 @@ impl Scopes {
         let scope_arena = &self.scope_arena;
         let leaf_scope = self.scope_tree.leaf_scopes.iter().find(|scopes| {
             let id = scopes.0.first().expect("more than one node");
-            range.is_subrange(&self.scope_arena[*id].text_range)
+            range.is_subrange(&self.scope_arena[*id].text_range())
         });
         leaf_scope
             .into_iter()
@@ -187,8 +120,8 @@ impl Scopes {
 trait DefinesScope {
     fn get_scope(
         &self,
-        definition_arena: &mut Arena<Definition>,
-        scope_arena: &mut Arena<Scope>,
+        definition_arena: &mut DefinitionArena,
+        scope_arena: &mut ScopeArena,
         errors: &mut Vec<ScopeAnalysisError>,
     ) -> ScopeId;
 }
@@ -196,24 +129,19 @@ trait DefinesScope {
 impl DefinesScope for With {
     fn get_scope<'a>(
         &self,
-        _definition_arena: &mut Arena<Definition>,
-        scope_arena: &'a mut Arena<Scope>,
+        _definition_arena: &mut DefinitionArena,
+        scope_arena: &'a mut ScopeArena,
         _errors: &mut Vec<ScopeAnalysisError>,
     ) -> ScopeId {
-        scope_arena.alloc_with_id(|id| Scope {
-            id,
-            kind: ScopeKind::With,
-            defines: BTreeMap::new(),
-            text_range: self.node().text_range(),
-        })
+        Scope::new_in_arena(scope_arena, ScopeKind::With, BTreeMap::new(), self.node().text_range()).id()
     }
 }
 
 impl DefinesScope for LetIn {
     fn get_scope(
         &self,
-        definition_arena: &mut Arena<Definition>,
-        scope_arena: &mut Arena<Scope>,
+        definition_arena: &mut DefinitionArena,
+        scope_arena: &mut ScopeArena,
         errors: &mut Vec<ScopeAnalysisError>,
     ) -> ScopeId {
         let mut defines = BTreeMap::new();
@@ -225,20 +153,15 @@ impl DefinesScope for LetIn {
             definition_arena,
         );
 
-        scope_arena.alloc_with_id(|id| Scope {
-            id,
-            kind: ScopeKind::LetIn,
-            defines,
-            text_range: self.node().text_range(),
-        })
+        Scope::new_in_arena(scope_arena, ScopeKind::LetIn, defines, self.node().text_range()).id()
     }
 }
 
 impl DefinesScope for AttrSet {
     fn get_scope(
         &self,
-        definition_arena: &mut Arena<Definition>,
-        scope_arena: &mut Arena<Scope>,
+        definition_arena: &mut DefinitionArena,
+        scope_arena: &mut ScopeArena,
         errors: &mut Vec<ScopeAnalysisError>,
     ) -> ScopeId {
         let mut defines = BTreeMap::new();
@@ -249,20 +172,15 @@ impl DefinesScope for AttrSet {
         };
         populate_from_entries(scope_kind, self, &mut defines, errors, definition_arena);
 
-        scope_arena.alloc_with_id(|id| Scope {
-            id,
-            kind: scope_kind,
-            defines,
-            text_range: self.node().text_range(),
-        })
+        Scope::new_in_arena(scope_arena, scope_kind, defines, self.node().text_range()).id()
     }
 }
 
 impl DefinesScope for Lambda {
     fn get_scope(
         &self,
-        definition_arena: &mut Arena<Definition>,
-        scope_arena: &mut Arena<Scope>,
+        definition_arena: &mut DefinitionArena,
+        scope_arena: &mut ScopeArena,
         errors: &mut Vec<ScopeAnalysisError>,
     ) -> ScopeId {
         let mut defines = BTreeMap::new();
@@ -308,12 +226,7 @@ impl DefinesScope for Lambda {
             _ => {}
         }
 
-        scope_arena.alloc_with_id(|id| Scope {
-            id,
-            kind: ScopeKind::Lambda,
-            defines,
-            text_range: self.node().text_range(),
-        })
+        Scope::new_in_arena(scope_arena, ScopeKind::Lambda, defines, self.node().text_range()).id()
     }
 }
 
@@ -323,22 +236,18 @@ fn insert_into_defines(
     name: &str,
     text_range: TextRange,
     errors: &mut Vec<ScopeAnalysisError>,
-    arena: &mut Arena<Definition>,
+    arena: &mut DefinitionArena,
 ) {
     if let Some(existing) = defines.get(name) {
         errors.push(ScopeAnalysisError::AlreadyDefined(
             scope_kind,
             name.to_owned(),
             text_range,
-            arena[*existing].text_range,
+            arena[*existing].text_range(),
         ));
     } else {
-        let id = arena.alloc_with_id(|id| Definition {
-            id,
-            name: name.to_owned(),
-            text_range,
-        });
-        defines.insert(name.to_owned(), id);
+        let definition = Definition::new_in_arena(arena, name, text_range);
+        defines.insert(name.to_owned(), definition.id());
     }
 }
 
@@ -379,7 +288,7 @@ fn insert_path_into_defines(
     scope_kind: ScopeKind,
     defines: &mut BTreeMap<String, DefinitionId>,
     errors: &mut Vec<ScopeAnalysisError>,
-    arena: &mut Arena<Definition>,
+    arena: &mut DefinitionArena,
     definition: &DefinitionPath,
 ) {
     if definition.is_static() {
@@ -473,7 +382,7 @@ fn populate_from_entries<T>(
     set: &T,
     defines: &mut BTreeMap<String, DefinitionId>,
     errors: &mut Vec<ScopeAnalysisError>,
-    arena: &mut Arena<Definition>,
+    arena: &mut DefinitionArena,
 ) where
     T: EntryHolder,
 {
@@ -529,8 +438,8 @@ pub fn defines_scope(kind: SyntaxKind) -> bool {
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) struct TrackScopesState {
-    pub(crate) definition_arena: Arena<Definition>,
-    pub(crate) scope_arena: Arena<Scope>,
+    pub(crate) definition_arena: DefinitionArena,
+    pub(crate) scope_arena: ScopeArena,
     pub(crate) root_scope: ScopeId,
     pub(crate) current_scopes: Stack<Scope>,
     pub(crate) errors: Vec<ScopeAnalysisError>,
@@ -547,19 +456,15 @@ impl TrackScopes {
         let mut definition_arena = Arena::new();
         let mut scope_arena = Arena::new();
         let root_defines = root_defines(&mut definition_arena);
-        let root_scope = scope_arena.alloc_with_id(|id| Scope {
-            id,
-            kind: ScopeKind::Root,
-            defines: root_defines,
-            text_range: ast.node().text_range(),
-        });
-        let current_scopes = vec![scope_arena[root_scope].clone()];
+        let root_scope = Scope::new_in_arena(&mut scope_arena, ScopeKind::Root, root_defines, ast.node().text_range());
+        let root_scope_id = root_scope.id();
+        let current_scopes = vec![root_scope.clone()];
 
         TrackScopes {
             state: TrackScopesState {
                 definition_arena,
                 scope_arena,
-                root_scope,
+                root_scope: root_scope_id,
                 current_scopes: Stack::from(current_scopes),
                 errors,
             },
@@ -629,7 +534,7 @@ impl CollectFromTree<()> for TrackScopes {
 
 #[cfg(test)]
 mod tests {
-    use crate::{AnalysisError, AnalysisResult};
+    use crate::{AnalysisError, AnalysisResult, Definition};
     use insta::assert_display_snapshot;
     use std::process::Command;
     use std::str;
@@ -882,8 +787,8 @@ mod tests {
         assert_eq!(errors, vec![]);
         let mut scopes: Vec<_> = result.scopes().cloned().collect();
         let mut definitions: Vec<_> = result.definitions().cloned().collect();
-        scopes.sort_by(|a, b| a.id.cmp(&b.id));
-        definitions.sort_by(|a, b| a.id.cmp(&b.id));
+        scopes.sort_by(|a, b| a.id().cmp(&b.id()));
+        definitions.sort_by(|a: &Definition, b| a.id().cmp(&b.id()));
         assert_display_snapshot!(format!(
             "{}\n=========\n{:#?}\n=========\n{:#?}\n=========\n{:#?}",
             nix_code,

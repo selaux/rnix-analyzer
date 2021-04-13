@@ -543,7 +543,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rnix-analyzer"
+name = "rnix_analyzer"
 version = "0.1.0"
 dependencies = [
  "criterion",

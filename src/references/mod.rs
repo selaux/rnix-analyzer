@@ -63,8 +63,8 @@ fn filter_identifier(
     {
         return !in_scopes
             .iter()
-            .find(|v| v.kind == ScopeKind::AttrSet || v.kind == ScopeKind::RecursiveAttrSet)
-            .map(|v| v.kind == ScopeKind::RecursiveAttrSet)
+            .find(|v| v.kind() == ScopeKind::AttrSet || v.kind() == ScopeKind::RecursiveAttrSet)
+            .map(|v| v.kind() == ScopeKind::RecursiveAttrSet)
             .unwrap_or(false);
     }
     // Filter identifiers in from clause of inherit

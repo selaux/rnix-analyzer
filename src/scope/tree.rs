@@ -1,4 +1,4 @@
-use crate::{Scope, ScopeId, ScopeKind};
+use crate::scope::{ScopeId, Scope, ScopeKind};
 use id_arena::Arena;
 use std::cmp::Ordering;
 
@@ -19,22 +19,22 @@ impl InverseScopeTree {
         let mut leaf_scopes = vec![];
         let mut scopes: Vec<_> = scope_arena.iter().map(|(_id, val)| val).collect();
         scopes.sort_by(|s1, s2| {
-            if s1.kind == ScopeKind::Root {
+            if s1.kind() == ScopeKind::Root {
                 return Ordering::Greater;
             }
-            if s2.kind == ScopeKind::Root {
+            if s2.kind() == ScopeKind::Root {
                 return Ordering::Less;
             }
-            s1.text_range.len().cmp(&s2.text_range.len())
+            s1.text_range().len().cmp(&s2.text_range().len())
         });
         for (idx, scope) in scopes.iter().enumerate() {
             let mut scope_path = vec![scope];
             for other_scope in scopes[idx + 1..].iter() {
-                if scope.text_range.is_subrange(&other_scope.text_range) {
+                if scope.text_range().is_subrange(&other_scope.text_range()) {
                     scope_path.push(other_scope);
                 }
             }
-            leaf_scopes.push(ScopePath(scope_path.into_iter().map(|s| s.id).collect()));
+            leaf_scopes.push(ScopePath(scope_path.into_iter().map(|s| s.id()).collect()));
         }
 
         InverseScopeTree { leaf_scopes }
