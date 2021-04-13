@@ -2,7 +2,7 @@ use crate::{utils::Stack, CollectFromTree};
 use id_arena::{Arena};
 use rnix::{
     types::{AttrSet, EntryHolder, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With},
-    SyntaxKind, TextRange, TextUnit,
+    SyntaxKind, TextRange, TextSize,
 };
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
@@ -22,7 +22,7 @@ fn insert_root_definition(
     name: &str,
     defines: &mut BTreeMap<String, DefinitionId>,
 ) {
-    let definition = Definition::new_in_arena(arena, name, TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
+    let definition = Definition::new_in_arena(arena, name, TextRange::empty(TextSize::from(0)));
     defines.insert(name.to_owned(), definition.id());
 }
 
@@ -97,7 +97,7 @@ impl Scopes {
         let scope_arena = &self.scope_arena;
         let leaf_scope = self.scope_tree.leaf_scopes.iter().find(|scopes| {
             let id = scopes.0.first().expect("more than one node");
-            range.is_subrange(&self.scope_arena[*id].text_range())
+            self.scope_arena[*id].text_range().contains_range(range)
         });
         leaf_scope
             .into_iter()

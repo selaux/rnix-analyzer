@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Benchmark, Criterion, Throughput};
 use rand::Rng;
-use rnix::{parse, TextRange, TextUnit};
+use rnix::{parse, TextRange, TextSize};
 use rnix_analyzer::AnalysisResult;
 
 fn all_packages(c: &mut Criterion) {
@@ -26,12 +26,12 @@ fn all_packages(c: &mut Criterion) {
         "all-packages querying",
         Benchmark::new("scopes_at", move |b| {
             let mut rng = rand::thread_rng();
-            let from = rng.gen_range(0u32, number_of_bytes);
-            let to = rng.gen_range(from, number_of_bytes);
+            let from = rng.gen_range(0u32..number_of_bytes);
+            let to = rng.gen_range(from..number_of_bytes);
 
             b.iter(|| {
                 result
-                    .scopes_at(TextRange::from_to(TextUnit::from(from), TextUnit::from(to)))
+                    .scopes_at(TextRange::new(TextSize::from(from), TextSize::from(to)))
                     .collect::<Vec<_>>()
             })
         })
@@ -44,12 +44,12 @@ fn all_packages(c: &mut Criterion) {
         "all-packages querying",
         Benchmark::new("variables_at", move |b| {
             let mut rng = rand::thread_rng();
-            let from = rng.gen_range(0u32, number_of_bytes);
-            let to = rng.gen_range(from, number_of_bytes);
+            let from = rng.gen_range(0u32..number_of_bytes);
+            let to = rng.gen_range(from..number_of_bytes);
 
             b.iter(|| {
                 result
-                    .variables_at(TextRange::from_to(TextUnit::from(from), TextUnit::from(to)))
+                    .variables_at(TextRange::new(TextSize::from(from), TextSize::from(to)))
                     .collect::<Vec<_>>()
             })
         })

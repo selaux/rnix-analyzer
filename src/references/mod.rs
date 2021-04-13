@@ -89,7 +89,7 @@ fn filter_identifier(
             let kind = binop.operator();
             let im_right = binop
                 .rhs()
-                .map(|n| node.text_range().is_subrange(&n.text_range()))
+                .map(|n| n.text_range().contains_range(node.text_range()))
                 .unwrap_or(false);
             if kind == BinOpKind::IsSet && im_right {
                 return true;
@@ -103,7 +103,7 @@ fn filter_identifier(
         if let Some(parent) = parent {
             let im_right = parent
                 .rhs()
-                .map(|n| node.text_range().is_subrange(&n.text_range()))
+                .map(|n| n.text_range().contains_range(node.text_range()))
                 .unwrap_or(false);
             if im_right {
                 return true;
@@ -128,7 +128,7 @@ impl References {
         self.variable_arena
             .iter()
             .map(|(_id, variable)| variable)
-            .filter(move |variable| variable.text_range.intersection(&range).is_some())
+            .filter(move |variable| variable.text_range.intersect(range).is_some())
     }
 
     /// Get all variables for a definition

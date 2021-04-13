@@ -141,6 +141,6 @@ impl DefinitionPath {
         let from = from.node().text_range().start();
         let to = self.last()?;
         let to = to.node().text_range().end();
-        Some(TextRange::from_to(from, to))
+        Some(TextRange::new(from, to))
     }
 }

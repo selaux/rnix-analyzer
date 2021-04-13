@@ -1,6 +1,7 @@
 ---
 source: src/references/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+
 ---
 a: b
 =========
@@ -8,7 +9,7 @@ a: b
     Reference(
         NotFoundInScope(
             "b",
-            [3; 4),
+            3..4,
         ),
     ),
 ]

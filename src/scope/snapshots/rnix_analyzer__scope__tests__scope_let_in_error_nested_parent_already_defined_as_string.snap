@@ -1,6 +1,7 @@
 ---
 source: src/scope/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+
 ---
 let a."b" = 1; "a".b.c = 1; in a
 =========
@@ -9,8 +10,8 @@ let a."b" = 1; "a".b.c = 1; in a
         AlreadyDefined(
             LetIn,
             "a.b",
-            [15; 20),
-            [6; 9),
+            15..20,
+            6..9,
         ),
     ),
 ]

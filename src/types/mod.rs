@@ -183,7 +183,6 @@ impl<'a, 'b> CollectFromTree<TrackTypesDependencies<'a, 'b>> for TrackTypes {
     type Error = TypeError;
 
     fn enter_node(&mut self, _: TrackTypesDependencies<'a, 'b>, node: &rnix::SyntaxNode) {
-        println!("Enter {:?}", node.kind());
         match node.kind() {
             SyntaxKind::NODE_ROOT => self.state.contexts.push_front(TrackTypesContext::Root),
             SyntaxKind::NODE_LIST => self
@@ -197,7 +196,6 @@ impl<'a, 'b> CollectFromTree<TrackTypesDependencies<'a, 'b>> for TrackTypes {
     fn exit_node(&mut self, _: TrackTypesDependencies<'a, 'b>, node: &rnix::SyntaxNode) {
         let state = &mut self.state;
         let context = state.contexts.pop_front();
-        println!("Exit {:?}", node.kind());
         let parsed_type = ParsedType::try_from(node.clone());
         let current_type_id = match parsed_type {
             Ok(ParsedType::Root(_)) => state.base_types.unknown,

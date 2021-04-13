@@ -5,15 +5,15 @@ authors = ["Stefan Lau <github@stefanlau.com>"]
 edition = "2018"
 
 [dependencies]
-rnix = { git = "https://github.com/nix-community/rnix-parser.git", rev = "d0d195592b565a45a20e96b9bddebb432b556c47" }
+rnix = "0.9"
 id-arena = "2.2"
-log = "0.4.11"
+log = "0.4"
 
 [dev-dependencies]
-insta = "0.13.1"
-criterion = "0.3.0"
-rayon = "1.3.0"
-rand = "0.7.0"
+insta = "1.7.1"
+criterion = "0.3.4"
+rayon = "1.5.0"
+rand = "0.8.3"
 
 [[bench]]
 name = "all-packages"

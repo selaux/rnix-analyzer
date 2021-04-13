@@ -30,7 +30,7 @@ impl InverseScopeTree {
         for (idx, scope) in scopes.iter().enumerate() {
             let mut scope_path = vec![scope];
             for other_scope in scopes[idx + 1..].iter() {
-                if scope.text_range().is_subrange(&other_scope.text_range()) {
+                if other_scope.text_range().contains_range(scope.text_range()) {
                     scope_path.push(other_scope);
                 }
             }
@@ -45,7 +45,7 @@ impl InverseScopeTree {
 mod tests {
     use crate::{AnalysisError, AnalysisResult};
     use insta::assert_debug_snapshot;
-    use rnix::{TextRange, TextUnit};
+    use rnix::{TextRange, TextSize};
     use std::process::Command;
     use std::str;
 
@@ -53,7 +53,7 @@ mod tests {
     fn test_simple_get_scopes() {
         assert_from_scopes_snapshot(
             "a: 1",
-            TextRange::from_to(TextUnit::from(0), TextUnit::from(1)),
+            TextRange::new(TextSize::from(0), TextSize::from(1)),
         );
     }
 
@@ -61,7 +61,7 @@ mod tests {
     fn test_nested_get_scopes() {
         assert_from_scopes_snapshot(
             "a: b: { c = 1; }",
-            TextRange::from_to(TextUnit::from(8), TextUnit::from(9)),
+            TextRange::new(TextSize::from(8), TextSize::from(9)),
         );
     }
 

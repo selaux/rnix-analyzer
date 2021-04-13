@@ -1,6 +1,7 @@
 ---
 source: src/scope/tree.rs
 expression: scopes
+
 ---
 [
     Scope {
@@ -13,7 +14,7 @@ expression: scopes
                 idx: 16,
             },
         },
-        text_range: [0; 4),
+        text_range: 0..4,
     },
     Scope {
         id: Id {
@@ -70,6 +71,6 @@ expression: scopes
                 idx: 0,
             },
         },
-        text_range: [0; 4),
+        text_range: 0..4,
     },
 ]

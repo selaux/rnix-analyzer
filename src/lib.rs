@@ -1,6 +1,6 @@
 pub use rnix;
 use rnix::WalkEvent;
-pub use rnix::{TextRange, TextUnit, AST};
+pub use rnix::{TextRange, TextSize, AST};
 
 pub mod references;
 pub mod scope;
@@ -144,14 +144,14 @@ impl AnalysisResult {
     ///
     /// let ast = rnix::parse("let foo = 1; in foo");
     /// let analysis = AnalysisResult::from(&ast);
-    /// let foo = analysis.variables_at(TextRange::from_to(
-    ///     TextUnit::from(16),
-    ///     TextUnit::from(17)
+    /// let foo = analysis.variables_at(TextRange::new(
+    ///     TextSize::from(16),
+    ///     TextSize::from(17)
     /// )).next().unwrap();
     ///
-    /// assert_eq!(analysis.definition_of(&foo).unwrap().text_range(), TextRange::from_to(
-    ///     TextUnit::from(4),
-    ///     TextUnit::from(7)
+    /// assert_eq!(analysis.definition_of(&foo).unwrap().text_range(), TextRange::new(
+    ///     TextSize::from(4),
+    ///     TextSize::from(7)
     /// ));
     /// ```
     pub fn definition_of(&self, variable: &Variable) -> Option<&Definition> {
@@ -182,14 +182,14 @@ impl AnalysisResult {
     /// let analysis = AnalysisResult::from(&ast);
     ///
     /// // Scopes for `a:`
-    /// assert_eq!(analysis.scopes_at(TextRange::from_to(
-    ///     TextUnit::from(0),
-    ///     TextUnit::from(1)
+    /// assert_eq!(analysis.scopes_at(TextRange::new(
+    ///     TextSize::from(0),
+    ///     TextSize::from(1)
     /// )).count(), 2);
     /// // Scopes for `b:`
-    /// assert_eq!(analysis.scopes_at(TextRange::from_to(
-    ///     TextUnit::from(3),
-    ///     TextUnit::from(4)
+    /// assert_eq!(analysis.scopes_at(TextRange::new(
+    ///     TextSize::from(3),
+    ///     TextSize::from(4)
     /// )).count(), 3);
     /// ```
     pub fn scopes_at(&self, range: TextRange) -> impl Iterator<Item = &Scope> {
@@ -238,7 +238,7 @@ impl AnalysisResult {
     ///
     /// let ast = rnix::parse("a: b: c");
     /// let analysis = AnalysisResult::from(&ast);
-    /// let variables: Vec<_> = analysis.variables_at(TextRange::from_to(TextUnit::from(3), TextUnit::from(7))).map(|v| v.name.as_str()).collect();
+    /// let variables: Vec<_> = analysis.variables_at(TextRange::new(TextSize::from(3), TextSize::from(7))).map(|v| v.name.as_str()).collect();
     ///
     /// assert_eq!(variables, vec!["b", "c"]);
     /// ```
@@ -253,25 +253,25 @@ impl AnalysisResult {
     ///
     /// let ast = rnix::parse("let foo = 1; in foo + foo");
     /// let analysis = AnalysisResult::from(&ast);
-    /// let foo = analysis.variables_at(TextRange::from_to(
-    ///     TextUnit::from(16),
-    ///     TextUnit::from(17)
+    /// let foo = analysis.variables_at(TextRange::new(
+    ///     TextSize::from(16),
+    ///     TextSize::from(17)
     /// )).next().unwrap();
     /// let foo_def = analysis.definition_of(&foo).unwrap();
     /// let foo_occurences: Vec<_> = analysis.variables_for(&foo_def).map(|v| (v.name.clone(), v.text_range)).collect();
     ///
     /// assert_eq!(foo_occurences, vec![
-    ///     ("foo".to_string(), TextRange::from_to(
-    ///         TextUnit::from(4),
-    ///         TextUnit::from(7)
+    ///     ("foo".to_string(), TextRange::new(
+    ///         TextSize::from(4),
+    ///         TextSize::from(7)
     ///     )),
-    ///     ("foo".to_string(), TextRange::from_to(
-    ///         TextUnit::from(16),
-    ///         TextUnit::from(19)
+    ///     ("foo".to_string(), TextRange::new(
+    ///         TextSize::from(16),
+    ///         TextSize::from(19)
     ///     )),
-    ///     ("foo".to_string(), TextRange::from_to(
-    ///         TextUnit::from(22),
-    ///         TextUnit::from(25)
+    ///     ("foo".to_string(), TextRange::new(
+    ///         TextSize::from(22),
+    ///         TextSize::from(25)
     ///     )),
     /// ]);
     /// ```
@@ -287,14 +287,14 @@ impl AnalysisResult {
 
 #[cfg(test)]
 mod tests {
-    use rnix::{TextRange, TextUnit};
+    use rnix::{TextRange, TextSize};
     #[test]
     fn test_empty_text_range_should_be_a_subrange_and_intersect() {
-        let containing = TextRange::from_to(TextUnit::from(0), TextUnit::from(10));
-        let inside = TextRange::from_to(TextUnit::from(1), TextUnit::from(1));
+        let containing = TextRange::new(TextSize::from(0), TextSize::from(10));
+        let inside = TextRange::new(TextSize::from(1), TextSize::from(1));
 
         // This basically tests assumptions
-        assert!(inside.is_subrange(&containing));
-        assert!(inside.intersection(&containing).is_some());
+        assert!(containing.contains_range(inside));
+        assert!(inside.intersect(containing).is_some());
     }
 }

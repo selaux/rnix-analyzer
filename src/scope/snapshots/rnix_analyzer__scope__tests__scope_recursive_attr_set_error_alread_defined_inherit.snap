@@ -1,6 +1,7 @@
 ---
 source: src/scope/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+
 ---
 a: rec {
             a = 1;
@@ -16,16 +17,16 @@ a: rec {
         AlreadyDefined(
             RecursiveAttrSet,
             "a",
-            [48; 49),
-            [21; 22),
+            48..49,
+            21..22,
         ),
     ),
     Scope(
         AlreadyDefined(
             RecursiveAttrSet,
             "c.a",
-            [84; 117),
-            [65; 66),
+            84..117,
+            65..66,
         ),
     ),
 ]

@@ -1,6 +1,7 @@
 ---
 source: src/scope/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+
 ---
 {a, a}: a + a
 =========
@@ -9,8 +10,8 @@ expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
         AlreadyDefined(
             Lambda,
             "a",
-            [4; 5),
-            [1; 2),
+            4..5,
+            1..2,
         ),
     ),
 ]

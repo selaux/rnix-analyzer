@@ -1,6 +1,7 @@
 ---
 source: src/references/mod.rs
-expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, variables,\n        references . 0 . references)"
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code, variables, result\n        . references . references)"
+
 ---
 b: {
             a = 1;
@@ -14,14 +15,14 @@ b: {
             idx: 0,
         },
         name: "b",
-        text_range: [0; 1),
+        text_range: 0..1,
     },
     Variable {
         id: Id {
             idx: 1,
         },
         name: "b",
-        text_range: [39; 40),
+        text_range: 39..40,
     },
 ]
 =========

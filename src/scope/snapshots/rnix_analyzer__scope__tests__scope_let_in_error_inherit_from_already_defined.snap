@@ -1,6 +1,7 @@
 ---
 source: src/scope/mod.rs
 expression: "format!(\"{}\\n=========\\n{:#?}\", nix_code, errors)"
+
 ---
 let a = 2; inherit (builtins) a; in a + a
 =========
@@ -9,8 +10,8 @@ let a = 2; inherit (builtins) a; in a + a
         AlreadyDefined(
             LetIn,
             "a",
-            [30; 31),
-            [4; 5),
+            30..31,
+            4..5,
         ),
     ),
 ]

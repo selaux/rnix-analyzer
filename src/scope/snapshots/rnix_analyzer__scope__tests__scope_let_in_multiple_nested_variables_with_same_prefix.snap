@@ -1,6 +1,7 @@
 ---
 source: src/scope/mod.rs
-expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code,\n        definitions, scopes, result . inverse_scope_tree ())"
+expression: "format!(\"{}\\n=========\\n{:#?}\\n=========\\n{:#?}\\n=========\\n{:#?}\", nix_code,\n        definitions, scopes, result . inverse_scope_tree())"
+
 ---
 let a = 1; as.b = 2; in a
 =========
@@ -10,126 +11,126 @@ let a = 1; as.b = 2; in a
             idx: 0,
         },
         name: "true",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 1,
         },
         name: "false",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 2,
         },
         name: "null",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 3,
         },
         name: "throw",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 4,
         },
         name: "abort",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 5,
         },
         name: "baseNameOf",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 6,
         },
         name: "builtins",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 7,
         },
         name: "derivation",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 8,
         },
         name: "dirOf",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 9,
         },
         name: "fetchTarball",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 10,
         },
         name: "import",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 11,
         },
         name: "isNull",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 12,
         },
         name: "map",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 13,
         },
         name: "placeholder",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 14,
         },
         name: "removeAttrs",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 15,
         },
         name: "toString",
-        text_range: [0; 0),
+        text_range: 0..0,
     },
     Definition {
         id: Id {
             idx: 16,
         },
         name: "a",
-        text_range: [4; 5),
+        text_range: 4..5,
     },
     Definition {
         id: Id {
             idx: 17,
         },
         name: "as",
-        text_range: [11; 13),
+        text_range: 11..13,
     },
 ]
 =========
@@ -189,7 +190,7 @@ let a = 1; as.b = 2; in a
                 idx: 0,
             },
         },
-        text_range: [0; 25),
+        text_range: 0..25,
     },
     Scope {
         id: Id {
@@ -204,7 +205,7 @@ let a = 1; as.b = 2; in a
                 idx: 17,
             },
         },
-        text_range: [0; 25),
+        text_range: 0..25,
     },
 ]
 =========
