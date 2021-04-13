@@ -55,14 +55,17 @@ impl Scope {
         &arena[id]
     }
 
+    /// Get the unique id of this scope
     pub(crate) fn id(&self) -> ScopeId {
         self.id
     }
 
+    /// Get the kind of this scope
     pub fn kind(&self) -> ScopeKind {
         self.kind
     }
 
+    /// Get the text range of this scope
     pub fn text_range(&self) -> TextRange {
         self.text_range
     }
