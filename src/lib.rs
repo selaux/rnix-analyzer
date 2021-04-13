@@ -9,10 +9,8 @@ pub mod utils;
 
 use references::References;
 pub use references::{Reference, ReferenceError, Variable, VariableId};
-use scope::{Scopes, DefinitionId};
-pub use scope::{
-    Definition, InverseScopeTree, Scope, ScopeAnalysisError, ScopeKind,
-};
+pub use scope::{Definition, InverseScopeTree, Scope, ScopeAnalysisError, ScopeKind};
+use scope::{DefinitionId, Scopes};
 use types::Types;
 pub use types::{NixType, TypeId};
 use utils::{CollectFromTree, TrackParent};

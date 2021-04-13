@@ -1,5 +1,5 @@
 use crate::{utils::Stack, CollectFromTree};
-use id_arena::{Arena};
+use id_arena::Arena;
 use rnix::{
     types::{AttrSet, EntryHolder, Lambda, LetIn, ParsedType, TokenWrapper, TypedNode, With},
     SyntaxKind, TextRange, TextSize,
@@ -12,8 +12,8 @@ mod definition_path;
 mod scope;
 mod tree;
 
-use definition_path::*;
 pub use definition::*;
+use definition_path::*;
 pub use scope::*;
 pub use tree::*;
 
@@ -133,7 +133,13 @@ impl DefinesScope for With {
         scope_arena: &'a mut ScopeArena,
         _errors: &mut Vec<ScopeAnalysisError>,
     ) -> ScopeId {
-        Scope::new_in_arena(scope_arena, ScopeKind::With, BTreeMap::new(), self.node().text_range()).id()
+        Scope::new_in_arena(
+            scope_arena,
+            ScopeKind::With,
+            BTreeMap::new(),
+            self.node().text_range(),
+        )
+        .id()
     }
 }
 
@@ -153,7 +159,13 @@ impl DefinesScope for LetIn {
             definition_arena,
         );
 
-        Scope::new_in_arena(scope_arena, ScopeKind::LetIn, defines, self.node().text_range()).id()
+        Scope::new_in_arena(
+            scope_arena,
+            ScopeKind::LetIn,
+            defines,
+            self.node().text_range(),
+        )
+        .id()
     }
 }
 
@@ -226,7 +238,13 @@ impl DefinesScope for Lambda {
             _ => {}
         }
 
-        Scope::new_in_arena(scope_arena, ScopeKind::Lambda, defines, self.node().text_range()).id()
+        Scope::new_in_arena(
+            scope_arena,
+            ScopeKind::Lambda,
+            defines,
+            self.node().text_range(),
+        )
+        .id()
     }
 }
 
@@ -456,7 +474,12 @@ impl TrackScopes {
         let mut definition_arena = Arena::new();
         let mut scope_arena = Arena::new();
         let root_defines = root_defines(&mut definition_arena);
-        let root_scope = Scope::new_in_arena(&mut scope_arena, ScopeKind::Root, root_defines, ast.node().text_range());
+        let root_scope = Scope::new_in_arena(
+            &mut scope_arena,
+            ScopeKind::Root,
+            root_defines,
+            ast.node().text_range(),
+        );
         let root_scope_id = root_scope.id();
         let current_scopes = vec![root_scope.clone()];
 

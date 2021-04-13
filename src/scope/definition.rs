@@ -1,4 +1,3 @@
-
 use id_arena::{Arena, Id as ArenaId};
 use rnix::TextRange;
 
@@ -21,7 +20,11 @@ pub struct Definition {
 
 impl Definition {
     /// Create a new definition within an arena
-    pub(crate) fn new_in_arena<'a>(arena: &'a mut DefinitionArena, name: &str, text_range: TextRange) -> &'a Definition {
+    pub(crate) fn new_in_arena<'a>(
+        arena: &'a mut DefinitionArena,
+        name: &str,
+        text_range: TextRange,
+    ) -> &'a Definition {
         let id = arena.alloc_with_id(|id| Definition {
             id,
             name: name.to_owned(),

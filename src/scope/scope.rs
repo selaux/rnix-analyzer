@@ -40,7 +40,12 @@ pub struct Scope {
 
 impl Scope {
     /// Create a new definition within an arena
-    pub(crate) fn new_in_arena<'a>(arena: &'a mut ScopeArena, kind: ScopeKind, defines: BTreeMap<String, DefinitionId>, text_range: TextRange) -> &'a Scope {
+    pub(crate) fn new_in_arena<'a>(
+        arena: &'a mut ScopeArena,
+        kind: ScopeKind,
+        defines: BTreeMap<String, DefinitionId>,
+        text_range: TextRange,
+    ) -> &'a Scope {
         let id = arena.alloc_with_id(|id| Scope {
             id,
             kind,
@@ -50,7 +55,7 @@ impl Scope {
         &arena[id]
     }
 
-    pub (crate) fn id(&self) -> ScopeId {
+    pub(crate) fn id(&self) -> ScopeId {
         self.id
     }
 

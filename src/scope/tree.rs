@@ -1,4 +1,4 @@
-use crate::scope::{ScopeId, Scope, ScopeKind};
+use crate::scope::{Scope, ScopeId, ScopeKind};
 use id_arena::Arena;
 use std::cmp::Ordering;
 
@@ -51,10 +51,7 @@ mod tests {
 
     #[test]
     fn test_simple_get_scopes() {
-        assert_from_scopes_snapshot(
-            "a: 1",
-            TextRange::new(TextSize::from(0), TextSize::from(1)),
-        );
+        assert_from_scopes_snapshot("a: 1", TextRange::new(TextSize::from(0), TextSize::from(1)));
     }
 
     #[test]
