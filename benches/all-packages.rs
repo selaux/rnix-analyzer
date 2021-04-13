@@ -5,17 +5,19 @@ use rnix_analyzer::AnalysisResult;
 
 fn all_packages(c: &mut Criterion) {
     let input = include_str!("all-packages.nix");
+    let input_byte_length = input.as_bytes().len() as u64;
     let mut all_packages_analysis = c.benchmark_group("all-packages analysis");
 
     all_packages_analysis
         .bench_function("parsing", move |b| b.iter(|| parse(input)))
+        .throughput(Throughput::Bytes(input_byte_length))
         .sample_size(10);
     let parsed = parse(input);
     all_packages_analysis
         .bench_function("analyzing", move |b| {
             b.iter(|| AnalysisResult::from(&parsed))
         })
-        .throughput(Throughput::Bytes(input.len() as u64))
+        .throughput(Throughput::Bytes(input_byte_length))
         .sample_size(10);
     all_packages_analysis.finish();
 
@@ -35,7 +37,7 @@ fn all_packages(c: &mut Criterion) {
                     .collect::<Vec<_>>()
             })
         })
-        .throughput(Throughput::Bytes(input.len() as u64))
+        .throughput(Throughput::Bytes(input_byte_length))
         .sample_size(10);
 
     let parsed = parse(input);
@@ -52,7 +54,7 @@ fn all_packages(c: &mut Criterion) {
                     .collect::<Vec<_>>()
             })
         })
-        .throughput(Throughput::Bytes(input.len() as u64))
+        .throughput(Throughput::Bytes(input_byte_length))
         .sample_size(10);
     all_packages_querying.finish();
 }
