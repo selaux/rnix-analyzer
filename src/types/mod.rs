@@ -64,7 +64,12 @@ impl NixType {
                 v.join(" | ")
             }
             // TODO
-            NixType::AttrSet { .. } => "set()".to_owned(),
+            NixType::AttrSet { exhaustive, .. } => {
+                format!(
+                    "{} attrset({{}})",
+                    if *exhaustive { "exhaustive" } else { "" }
+                )
+            }
             NixType::Lambda { .. } => "lambda()".to_owned(),
         }
     }
@@ -110,6 +115,7 @@ pub(crate) enum TrackTypesContext {
     Root,
     None,
     List(ListContext),
+    AttrSet,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -189,6 +195,7 @@ impl<'a, 'b> CollectFromTree<TrackTypesDependencies<'a, 'b>> for TrackTypes {
                 .state
                 .contexts
                 .push_front(TrackTypesContext::List(ListContext { types: vec![] })),
+            SyntaxKind::NODE_ATTR_SET => self.state.contexts.push_front(TrackTypesContext::AttrSet),
             _ => self.state.contexts.push_front(TrackTypesContext::None),
         }
     }
@@ -204,7 +211,7 @@ impl<'a, 'b> CollectFromTree<TrackTypesDependencies<'a, 'b>> for TrackTypes {
                 Ok(Value::Integer(_)) => state.base_types.integer,
                 Ok(Value::Path(_, _)) => state.base_types.path,
                 Ok(Value::String(_)) => state.base_types.string,
-                _ => unreachable!(),
+                _ => unimplemented!(),
             },
             Ok(ParsedType::Str(_)) => state.base_types.string,
             Ok(ParsedType::List(_)) => match context {
@@ -224,6 +231,19 @@ impl<'a, 'b> CollectFromTree<TrackTypesDependencies<'a, 'b>> for TrackTypes {
                 c => {
                     log::warn!("Exited list node, but found non-list-context: {:?}, returning list(unknown) type", c);
                     state.get_or_insert_type(NixType::List(state.base_types.unknown))
+                }
+            },
+            Ok(ParsedType::AttrSet(_)) => match context {
+                Some(TrackTypesContext::AttrSet) => state.get_or_insert_type(NixType::AttrSet {
+                    attrs: BTreeMap::new(),
+                    exhaustive: true,
+                }),
+                c => {
+                    log::warn!("Exited attrset node, but found non-attrset-context: {:?}, returning non-exhaustive empty attrset type", c);
+                    state.get_or_insert_type(NixType::AttrSet {
+                        attrs: BTreeMap::new(),
+                        exhaustive: false,
+                    })
                 }
             },
             Ok(_) => {
@@ -308,6 +328,11 @@ mod tests {
     #[test]
     fn test_mixed_array_export_nixtype() {
         assert_export_nixtype_snapshot("[ 1 2.0 \"3\" \"1\" 2 3.0]");
+    }
+
+    #[test]
+    fn test_empty_attrset_nixtype() {
+        assert_export_nixtype_snapshot("{}");
     }
 
     fn assert_export_nixtype_snapshot(nix_code: &str) {
