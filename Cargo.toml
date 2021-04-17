@@ -9,11 +9,15 @@ rnix = "0.9"
 id-arena = "2.2"
 log = "0.4"
 
+[build-dependencies]
+skeptic = "0.13"
+
 [dev-dependencies]
-insta = "1.7.1"
-criterion = "0.3.4"
-rayon = "1.5.0"
-rand = "0.8.3"
+insta = "1.7"
+criterion = "0.3"
+rayon = "1.5"
+rand = "0.8"
+skeptic = "0.13"
 
 [[bench]]
 name = "all-packages"
